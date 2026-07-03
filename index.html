@@ -12,125 +12,102 @@
   <style>
     :root{
       --bg:#FFB84D; --ink:#2b2b29; --muted:#74726a; --panel:#fffaf0; --line:#2b2b29; --accent:#D56062;
-      --good:#3f8f5c; --sky:#5aa9d6;
+      --good:#3f8f5c; --sky:#5aa9d6; --grid:rgba(43,43,41,.06);
     }
     [data-theme="dark"]{
-      --bg:#3f403e; --ink:#FFB84D; --muted:#b9b08f; --panel:#4b4c49; --line:#1b1b1a; --accent:#ff9aa0;
-      --good:#7ed39c; --sky:#8fd0ee;
+      --bg:#3f403e; --ink:#FFB84D; --muted:#b9b08f; --panel:#4b4c49; --line:#141413; --accent:#ff9aa0;
+      --good:#7ed39c; --sky:#8fd0ee; --grid:rgba(0,0,0,.22);
     }
     *{ margin:0; box-sizing:border-box; }
     html{ scroll-behavior:smooth; }
     body{
       font-family:"Orbitron",sans-serif; color:var(--ink); background:var(--bg);
-      line-height:1.6; overflow-x:hidden;
-      transition:background-color .3s, color .3s;
+      line-height:1.6; overflow-x:hidden; transition:background-color .3s, color .3s;
     }
+    /* faint blueprint grid — reinforces the "workshop / architecture" theme */
+    body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
+      background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+      background-size:34px 34px; }
 
-    /* ---- top scroll-progress bar ---- */
-    .progress{ position:fixed; top:0; left:0; height:6px; width:0%;
-      background:var(--accent); border-bottom:2px solid var(--line); z-index:60; }
-
-    /* ---- dark/light toggle ---- */
+    .progress{ position:fixed; top:0; left:0; height:6px; width:0%; background:var(--accent); border-bottom:2px solid var(--line); z-index:60; }
     .toggle{ position:fixed; top:14px; right:14px; z-index:60; font-family:"Press Start 2P",monospace; font-size:9px;
       padding:9px 11px; border:3px solid var(--line); border-radius:6px; background:var(--panel); color:var(--ink);
       cursor:pointer; box-shadow:3px 3px 0 var(--line); }
     .toggle:active{ transform:translate(2px,2px); box-shadow:none; }
 
-    section{ max-width:760px; margin:0 auto; padding:64px 22px; }
+    section{ max-width:780px; margin:0 auto; padding:58px 22px; }
 
-    /* ---- hero ---- */
-    .hero{ min-height:92vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
-    .hero .emoji{ font-size:clamp(4rem,18vw,7rem); filter:drop-shadow(3px 4px 0 rgba(0,0,0,.18)); animation:bob 4s ease-in-out infinite; }
-    h1{ font-family:"Press Start 2P",monospace; font-size:clamp(1.1rem,5.2vw,2.1rem); line-height:1.5; margin:20px 0 14px; text-shadow:3px 3px 0 var(--line); }
-    .lede{ max-width:48ch; font-weight:500; color:var(--muted); }
-    .scrollcue{ margin-top:44px; font-family:"Press Start 2P",monospace; font-size:9px; color:var(--accent); animation:bob 2.2s ease-in-out infinite; }
+    /* hero */
+    .hero{ min-height:94vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding-top:40px; }
+    .hero .art{ width:min(300px,74vw); margin-bottom:8px; }
+    h1{ font-family:"Press Start 2P",monospace; font-size:clamp(1.1rem,5.2vw,2.15rem); line-height:1.5; margin:22px 0 16px; text-shadow:3px 3px 0 var(--line); }
+    .lede{ max-width:46ch; font-weight:500; color:var(--muted); }
+    .scrollcue{ margin-top:40px; font-family:"Press Start 2P",monospace; font-size:9px; color:var(--accent); animation:bob 2.2s ease-in-out infinite; }
 
-    /* ---- step framing ---- */
-    .kicker{ font-family:"Press Start 2P",monospace; font-size:10px; color:var(--accent); letter-spacing:.05em; }
-    h2{ font-family:"Press Start 2P",monospace; font-size:clamp(.95rem,3.6vw,1.35rem); line-height:1.5; margin:12px 0 16px; text-shadow:2px 2px 0 var(--line); }
-    p.body{ color:var(--ink); font-weight:500; max-width:52ch; }
+    /* section headers with number chips */
+    .head{ display:flex; align-items:center; gap:12px; margin-bottom:6px; }
+    .num{ flex:none; font-family:"Press Start 2P",monospace; font-size:11px; color:var(--panel); background:var(--accent);
+      border:3px solid var(--line); border-radius:8px; padding:8px 9px; box-shadow:3px 3px 0 var(--line); }
+    .kicker{ font-family:"Press Start 2P",monospace; font-size:10px; color:var(--accent); letter-spacing:.04em; }
+    h2{ font-family:"Press Start 2P",monospace; font-size:clamp(.95rem,3.5vw,1.35rem); line-height:1.5; margin:6px 0 16px; text-shadow:2px 2px 0 var(--line); }
+    p.body{ color:var(--ink); font-weight:500; max-width:56ch; }
     p.body + p.body{ margin-top:14px; }
-    .aside{ margin-top:14px; color:var(--muted); font-size:.92rem; }
+    .aside{ margin-top:16px; color:var(--muted); font-size:.92rem; max-width:56ch; }
 
-    .panel{ border:3px solid var(--line); border-radius:12px; background:var(--panel); box-shadow:6px 6px 0 var(--line); padding:24px; }
-    .stage{ margin:26px 0 8px; }
+    .panel{ border:3px solid var(--line); border-radius:14px; background:var(--panel); box-shadow:7px 7px 0 var(--line); padding:24px; }
+    .stage{ margin:24px 0 6px; }
 
-    /* ---- reveal-on-scroll ---- */
     .reveal{ opacity:0; transform:translateY(26px); transition:opacity .6s ease, transform .6s ease; }
     .reveal.in{ opacity:1; transform:none; }
 
-    /* ---- pipeline ---- */
-    .pipe-cap{ display:flex; justify-content:space-between; gap:6px; margin-top:12px; }
-    .pipe-cap span{ flex:1; text-align:center; font-family:"Press Start 2P",monospace; font-size:7.5px; color:var(--muted); line-height:1.6; }
-    .flabel{ font-weight:700; }
-
-    /* svg helpers */
-    .stk{ stroke:var(--line); stroke-width:3; }
-    .fpanel{ fill:var(--panel); }
-    .fbg{ fill:var(--bg); }
-    .facc{ fill:var(--accent); }
-    .fgood{ fill:var(--good); }
-    .fsky{ fill:var(--sky); }
-    .tx{ fill:var(--ink); font-family:"Press Start 2P",monospace; font-size:8px; }
-    .txm{ fill:var(--muted); font-family:"Orbitron",sans-serif; font-size:12px; font-weight:700; }
-
-    /* travelling packet — animates only when its section is in view */
-    .packet{ opacity:0; }
-    .go .packet{ opacity:1; animation:travel 4.2s ease-in-out infinite; }
-    @keyframes travel{
-      0%   { transform:translateX(0);   }
-      22%  { transform:translateX(150px);}
-      28%  { transform:translateX(150px);}
-      50%  { transform:translateX(300px);}
-      56%  { transform:translateX(300px);}
-      82%  { transform:translateX(452px);}
-      100% { transform:translateX(452px);}
-    }
-    /* stop lights pulse in sequence */
-    .go .s1{ animation:pop 4.2s ease-in-out infinite; }
-    .go .s2{ animation:pop 4.2s ease-in-out .9s infinite; }
-    .go .s3{ animation:pop 4.2s ease-in-out 1.9s infinite; }
-    .go .s4{ animation:pop 4.2s ease-in-out 3.1s infinite; }
-    @keyframes pop{ 0%,12%,100%{ transform:scale(1); } 6%{ transform:scale(1.18); } }
-
-    /* rooms */
-    .rooms .lock{ transform-origin:center; }
-    .go .rlock1{ animation:jiggle 3s ease-in-out infinite; }
-    .go .rlock2{ animation:jiggle 3s ease-in-out .6s infinite; }
-    .go .rlock3{ animation:jiggle 3s ease-in-out 1.2s infinite; }
-    @keyframes jiggle{ 0%,88%,100%{ transform:rotate(0); } 92%{ transform:rotate(-7deg); } 96%{ transform:rotate(7deg); } }
-    /* the intruder arrow that bounces off */
-    .go .intruder{ animation:bounceoff 3.4s ease-in-out infinite; }
-    @keyframes bounceoff{
-      0%{ transform:translate(0,0); opacity:0; }
-      15%{ opacity:1; }
-      45%{ transform:translate(64px,0); opacity:1; }
-      60%{ transform:translate(40px,-14px); opacity:1; }
-      80%{ transform:translate(64px,26px); opacity:0; }
-      100%{ transform:translate(0,0); opacity:0; }
-    }
-
-    @keyframes bob{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-9px); } }
+    /* pipeline captions */
+    .pipe-cap{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:16px; }
+    .pipe-cap span{ text-align:center; font-size:.72rem; color:var(--muted); line-height:1.45; }
+    .pipe-cap b{ display:block; color:var(--ink); font-family:"Press Start 2P",monospace; font-size:7.5px; margin-bottom:5px; line-height:1.5; }
 
     .cards{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:20px; }
     .card{ border:3px solid var(--line); border-radius:10px; background:var(--bg); padding:16px; box-shadow:4px 4px 0 var(--line); }
-    .card h3{ font-family:"Press Start 2P",monospace; font-size:10px; margin-bottom:8px; color:var(--accent); line-height:1.5; }
+    .card h3{ font-family:"Press Start 2P",monospace; font-size:9.5px; margin-bottom:9px; color:var(--accent); line-height:1.55; }
     .card p{ font-size:.86rem; color:var(--ink); font-weight:500; }
-    @media(max-width:560px){ .cards{ grid-template-columns:1fr; } }
+    @media(max-width:560px){ .cards{ grid-template-columns:1fr; } .pipe-cap{ font-size:.66rem; } }
 
     .cta{ text-align:center; }
-    .btn{ display:inline-block; margin-top:8px; font-family:"Press Start 2P",monospace; font-size:11px; color:var(--panel);
-      background:var(--accent); border:3px solid var(--line); border-radius:8px; padding:16px 22px; text-decoration:none;
-      box-shadow:5px 5px 0 var(--line); }
+    .btn{ display:inline-block; margin-top:12px; font-family:"Press Start 2P",monospace; font-size:11px; color:var(--panel);
+      background:var(--accent); border:3px solid var(--line); border-radius:8px; padding:16px 22px; text-decoration:none; box-shadow:5px 5px 0 var(--line); }
     .btn:active{ transform:translate(3px,3px); box-shadow:none; }
-    footer{ text-align:center; padding:40px 20px 70px; color:var(--muted); font-size:.85rem; }
+    footer{ text-align:center; padding:36px 20px 70px; color:var(--muted); font-size:.85rem; }
     footer a{ color:var(--accent); font-weight:700; text-decoration:none; }
     footer a:hover{ text-decoration:underline; }
+
+    /* ---- shared SVG styling: everything is bold brand line-art ---- */
+    svg .ln{ fill:none; stroke:var(--line); stroke-width:3; stroke-linejoin:round; stroke-linecap:round; }
+    svg .lnt{ fill:none; stroke:var(--line); stroke-width:2; stroke-linejoin:round; stroke-linecap:round; }
+    .fpanel{ fill:var(--panel); } .fbg{ fill:var(--bg); }
+    .fcoral{ fill:var(--accent); } .fsun{ fill:#FFB84D; } .fgreen{ fill:var(--good); } .fblue{ fill:var(--sky); }
+    .tx{ fill:var(--ink); font-family:"Press Start 2P",monospace; font-size:8px; }
+    .txm{ fill:var(--muted); font-family:"Orbitron",sans-serif; font-size:12px; font-weight:700; }
+
+    /* animations (all disabled under reduced-motion) */
+    @keyframes bob{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-9px); } }
+    .hero .art{ animation:bob 5s ease-in-out infinite; }
+    .go .packet{ animation:travel 4.6s ease-in-out infinite; }
+    @keyframes travel{ 0%{ transform:translateX(0);} 20%,26%{ transform:translateX(127px);} 46%,52%{ transform:translateX(253px);} 78%,100%{ transform:translateX(380px);} }
+    .go .s1{ animation:pop 4.6s ease-in-out .1s infinite; } .go .s2{ animation:pop 4.6s ease-in-out 1.0s infinite; }
+    .go .s3{ animation:pop 4.6s ease-in-out 2.1s infinite; } .go .s4{ animation:pop 4.6s ease-in-out 3.4s infinite; }
+    @keyframes pop{ 0%,10%,100%{ transform:translateY(0);} 5%{ transform:translateY(-5px);} }
+    .rlock1,.rlock2,.rlock3,.spark{ transform-box:fill-box; transform-origin:center; }
+    .go .rlock1{ animation:jiggle 3.2s ease-in-out infinite; } .go .rlock2{ animation:jiggle 3.2s ease-in-out .5s infinite; } .go .rlock3{ animation:jiggle 3.2s ease-in-out 1s infinite; }
+    @keyframes jiggle{ 0%,86%,100%{ transform:rotate(0);} 90%{ transform:rotate(-6deg);} 95%{ transform:rotate(6deg);} }
+    .go .intruder{ animation:bounceoff 3.6s ease-in-out infinite; }
+    @keyframes bounceoff{ 0%{ transform:translate(0,0); opacity:0;} 12%{ opacity:1;} 42%{ transform:translate(52px,0); opacity:1;} 56%{ transform:translate(34px,-12px);} 78%{ transform:translate(54px,22px); opacity:0;} 100%{ transform:translate(0,0); opacity:0;} }
+    .go .spark{ animation:spark 3.6s ease-in-out infinite; }
+    @keyframes spark{ 0%,44%{ opacity:0; transform:scale(.4);} 50%{ opacity:1; transform:scale(1.1);} 60%,100%{ opacity:0; transform:scale(.6);} }
 
     @media(prefers-reduced-motion:reduce){
       *{ animation:none !important; }
       html{ scroll-behavior:auto; }
       .reveal{ opacity:1; transform:none; }
+      .packet{ transform:translateX(190px); }
     }
   </style>
 </head>
@@ -140,7 +117,27 @@
 
   <!-- HERO -->
   <section class="hero">
-    <div class="emoji">🏗️</div>
+    <svg class="art" viewBox="0 0 300 200" role="img" aria-label="A browser window showing a little website with a building and a sun.">
+      <!-- browser window -->
+      <rect x="20" y="24" width="260" height="164" rx="14" class="fpanel ln"/>
+      <line x1="20" y1="58" x2="280" y2="58" class="ln"/>
+      <circle cx="40" cy="41" r="5" class="fcoral ln"/>
+      <circle cx="58" cy="41" r="5" class="fsun ln"/>
+      <circle cx="76" cy="41" r="5" class="fgreen ln"/>
+      <rect x="120" y="33" width="150" height="16" rx="8" class="fbg ln"/>
+      <!-- content: sun -->
+      <circle cx="228" cy="96" r="17" class="fsun ln"/>
+      <g class="ln"><line x1="228" y1="66" x2="228" y2="74"/><line x1="255" y1="96" x2="263" y2="96"/><line x1="249" y1="76" x2="255" y2="70"/></g>
+      <!-- content: building -->
+      <rect x="52" y="96" width="70" height="76" class="fcoral ln"/>
+      <rect x="132" y="120" width="46" height="52" class="fbg ln"/>
+      <g class="lnt" stroke="var(--panel)">
+        <rect x="64" y="108" width="14" height="14" fill="none"/><rect x="96" y="108" width="14" height="14" fill="none"/>
+        <rect x="64" y="134" width="14" height="14" fill="none"/><rect x="96" y="134" width="14" height="14" fill="none"/>
+      </g>
+      <rect x="145" y="140" width="20" height="32" class="fpanel ln"/>
+      <line x1="40" y1="172" x2="266" y2="172" class="ln"/>
+    </svg>
     <h1>How solhann.net Works</h1>
     <p class="lede">This is a tiny workshop for making little websites. Below is the whole thing explained with no jargon — just pictures and plain words. Give it a scroll.</p>
     <div class="scrollcue">▼ SCROLL ▼</div>
@@ -149,7 +146,7 @@
   <!-- 1. WHAT IS THIS -->
   <section>
     <div class="reveal">
-      <div class="kicker">THE BIG IDEA</div>
+      <div class="head"><span class="num">01</span><span class="kicker">THE BIG IDEA</span></div>
       <h2>One idea → one live website</h2>
       <div class="panel">
         <p class="body">Every little app here — a quiz, a gallery, an expense tracker — lives at its own web address, like <b>quiz.solhann.net</b>. They all share one small rented computer on the internet (we call it <b>the server</b>), but each app behaves as if it has the place to itself.</p>
@@ -161,113 +158,144 @@
   <!-- 2. THE PIPELINE -->
   <section>
     <div class="reveal">
-      <div class="kicker">THE JOURNEY</div>
+      <div class="head"><span class="num">02</span><span class="kicker">THE JOURNEY</span></div>
       <h2>Watch a change go live</h2>
       <p class="body">When something changes — you tweak a colour, fix a typo — that change takes a short automated journey. You press “send” once; robots do the rest.</p>
 
       <div class="panel stage" id="pipeStage">
-        <svg viewBox="0 0 480 210" width="100%" role="img" aria-label="A change travels from your desk, to a post office, to the building, and onto the live website.">
-          <!-- connecting road -->
-          <line x1="40" y1="70" x2="452" y2="70" class="stk" stroke-dasharray="7 7" fill="none"/>
+        <svg viewBox="0 0 500 168" width="100%" role="img" aria-label="A change travels from your desk, to a checker, to the server, and onto the live website.">
+          <!-- road -->
+          <line x1="60" y1="120" x2="440" y2="120" class="ln" stroke-dasharray="2 12"/>
 
-          <!-- stop 1: your desk -->
+          <!-- station 1: idea (lightbulb) -->
           <g class="s1">
-            <rect x="10" y="40" width="60" height="60" rx="9" class="fpanel stk"/>
-            <text x="40" y="76" text-anchor="middle" font-size="26">💡</text>
+            <rect x="28" y="12" width="64" height="66" rx="10" class="fpanel ln"/>
+            <circle cx="60" cy="38" r="13" class="fsun ln"/>
+            <path d="M54 48 h12 M55 54 h10" class="ln"/>
+            <g class="ln"><line x1="60" y1="18" x2="60" y2="13"/><line x1="44" y1="30" x2="40" y2="27"/><line x1="76" y1="30" x2="80" y2="27"/></g>
           </g>
-          <!-- stop 2: post office (GitHub) -->
-          <g class="s2" transform="translate(120,0)">
-            <rect x="10" y="40" width="60" height="60" rx="9" class="fpanel stk"/>
-            <text x="40" y="76" text-anchor="middle" font-size="26">📮</text>
-          </g>
-          <!-- stop 3: the building (server) -->
-          <g class="s3" transform="translate(270,0)">
-            <rect x="10" y="40" width="60" height="60" rx="9" class="fpanel stk"/>
-            <text x="40" y="76" text-anchor="middle" font-size="26">🏢</text>
-          </g>
-          <!-- stop 4: live site -->
-          <g class="s4" transform="translate(422,0)">
-            <rect x="0" y="40" width="60" height="60" rx="9" class="fpanel stk"/>
-            <text x="30" y="76" text-anchor="middle" font-size="26">🌍</text>
-          </g>
+          <text x="60" y="98" text-anchor="middle" class="tx">YOU</text>
 
-          <!-- travelling packet -->
+          <!-- station 2: checker (magnifier over doc) -->
+          <g class="s2">
+            <rect x="155" y="12" width="64" height="66" rx="10" class="fpanel ln"/>
+            <rect x="176" y="26" width="22" height="28" rx="2" class="fbg ln"/>
+            <line x1="181" y1="33" x2="193" y2="33" class="lnt"/><line x1="181" y1="40" x2="193" y2="40" class="lnt"/>
+            <circle cx="197" cy="48" r="9" class="fgreen ln"/><line x1="204" y1="55" x2="210" y2="61" class="ln"/>
+          </g>
+          <text x="187" y="98" text-anchor="middle" class="tx">CHECK</text>
+
+          <!-- station 3: server rack -->
+          <g class="s3">
+            <rect x="281" y="12" width="64" height="66" rx="10" class="fpanel ln"/>
+            <rect x="299" y="24" width="28" height="42" rx="3" class="fbg ln"/>
+            <rect x="304" y="30" width="18" height="8" rx="1.5" class="fpanel lnt"/>
+            <rect x="304" y="42" width="18" height="8" rx="1.5" class="fpanel lnt"/>
+            <rect x="304" y="54" width="18" height="8" rx="1.5" class="fpanel lnt"/>
+            <circle cx="308" cy="34" r="1.8" class="fgreen"/>
+            <circle cx="308" cy="46" r="1.8" class="fgreen"/>
+            <circle cx="308" cy="58" r="1.8" class="fsun"/>
+          </g>
+          <text x="313" y="98" text-anchor="middle" class="tx">SERVER</text>
+
+          <!-- station 4: live website (globe) -->
+          <g class="s4">
+            <rect x="408" y="12" width="64" height="66" rx="10" class="fpanel ln"/>
+            <circle cx="440" cy="44" r="16" class="fblue ln"/>
+            <path d="M424 44 h32 M440 28 v32 M429 33 q11 11 22 0 M429 55 q11 -11 22 0" class="lnt" stroke="var(--panel)"/>
+          </g>
+          <text x="440" y="98" text-anchor="middle" class="tx">LIVE</text>
+
+          <!-- travelling parcel rides the road -->
           <g class="packet">
-            <rect x="26" y="112" width="30" height="24" rx="5" class="facc stk"/>
-            <text x="41" y="130" text-anchor="middle" font-size="14">📦</text>
+            <rect x="48" y="108" width="26" height="24" rx="4" class="fcoral ln"/>
+            <line x1="48" y1="118" x2="74" y2="118" class="lnt" stroke="var(--panel)"/>
+            <line x1="61" y1="108" x2="61" y2="132" class="lnt" stroke="var(--panel)"/>
           </g>
-
-          <!-- labels -->
-          <text x="40"  y="122" text-anchor="middle" class="tx">YOU</text>
-          <text x="160" y="122" text-anchor="middle" class="tx">SENT</text>
-          <text x="310" y="122" text-anchor="middle" class="tx">FILED</text>
-          <text x="452" y="122" text-anchor="middle" class="tx">LIVE</text>
         </svg>
 
         <div class="pipe-cap">
-          <span><b class="flabel">You make a change</b><br>on your own computer</span>
-          <span><b class="flabel">A “post office”</b><br>catches it &amp; checks it (GitHub)</span>
-          <span><b class="flabel">The building</b><br>receives the delivery (the server)</span>
-          <span><b class="flabel">The website</b><br>updates for everyone</span>
+          <span><b>YOU CHANGE IT</b>on your own computer</span>
+          <span><b>IT’S CHECKED</b>a helper catches mistakes</span>
+          <span><b>IT’S DELIVERED</b>to the shared server</span>
+          <span><b>IT’S LIVE</b>for everyone, in seconds</span>
         </div>
       </div>
-      <p class="aside">The delivery van has a very narrow job: it can only <i>drop parcels at the loading dock</i>. It can’t wander the building, open other doors, or take anything out. So even the automated helpers have almost no power — by design.</p>
+      <p class="aside">The delivery van has a very narrow job: it can only <i>drop parcels at the loading dock</i>. It can’t wander the building, open other doors, or take anything out — so even the automated helpers have almost no power, by design.</p>
     </div>
   </section>
 
   <!-- 3. CONTAINMENT -->
   <section>
-    <div class="reveal rooms">
-      <div class="kicker">STAYING SAFE</div>
+    <div class="reveal">
+      <div class="head"><span class="num">03</span><span class="kicker">STAYING SAFE</span></div>
       <h2>Every app in its own locked room</h2>
       <p class="body">The apps share one building, but each one gets its own <b>locked room</b>. An app can only ever touch its own things. If one app misbehaves — or someone tries something sneaky — it can’t reach into the room next door.</p>
 
       <div class="panel stage" id="roomsStage">
-        <svg viewBox="0 0 480 200" width="100%" role="img" aria-label="Three separate locked rooms inside one building; an intruder arrow bounces off a locked door.">
-          <!-- building outline -->
-          <rect x="8" y="20" width="464" height="164" rx="10" class="fbg stk"/>
-          <!-- roof line -->
-          <line x1="8" y1="52" x2="472" y2="52" class="stk"/>
-          <text x="240" y="43" text-anchor="middle" class="tx">THE SERVER (ONE COMPUTER)</text>
+        <svg viewBox="0 0 480 210" width="100%" role="img" aria-label="Three separate locked rooms in one building; a sneaky arrow bounces off a locked door.">
+          <rect x="10" y="20" width="460" height="178" rx="12" class="fbg ln"/>
+          <line x1="10" y1="54" x2="470" y2="54" class="ln"/>
+          <text x="240" y="43" text-anchor="middle" class="tx">THE SERVER — ONE COMPUTER</text>
 
-          <!-- room 1 -->
-          <g transform="translate(28,66)">
-            <rect x="0" y="0" width="128" height="100" rx="8" class="fpanel stk"/>
-            <text x="64" y="46" text-anchor="middle" font-size="26">🎲</text>
-            <text x="64" y="74" text-anchor="middle" class="tx">QUIZ</text>
-            <g class="lock rlock1" transform="translate(112,84)"><text font-size="15">🔒</text></g>
+          <!-- each room: app glyph on top, a locked door on the bottom wall.
+               Positioning lives on the static outer <g> (transform attribute);
+               the animated inner <g> only rotates — so CSS never clobbers place. -->
+          <!-- room 1: quiz (die) -->
+          <g transform="translate(28,68)">
+            <rect x="0" y="0" width="130" height="114" rx="8" class="fpanel ln"/>
+            <rect x="43" y="14" width="44" height="44" rx="6" class="fbg ln"/>
+            <circle cx="54" cy="25" r="3.5" class="fcoral"/><circle cx="76" cy="25" r="3.5" class="fcoral"/>
+            <circle cx="65" cy="36" r="3.5" class="fcoral"/><circle cx="54" cy="47" r="3.5" class="fcoral"/><circle cx="76" cy="47" r="3.5" class="fcoral"/>
+            <text x="65" y="76" text-anchor="middle" class="tx">QUIZ</text>
+            <rect x="52" y="80" width="26" height="34" rx="3" class="fbg ln"/>
+            <g transform="translate(65,95)"><g class="rlock1">
+              <rect x="-6" y="-1" width="12" height="9" rx="2" class="fsun ln"/>
+              <path d="M-3 -1 v-3 a3 3 0 0 1 6 0 v3" class="lnt"/>
+              <circle cx="0" cy="3.5" r="1.4" class="fbg"/>
+            </g></g>
           </g>
-          <!-- room 2 -->
-          <g transform="translate(176,66)">
-            <rect x="0" y="0" width="128" height="100" rx="8" class="fpanel stk"/>
-            <text x="64" y="46" text-anchor="middle" font-size="26">💸</text>
-            <text x="64" y="74" text-anchor="middle" class="tx">EXPENSES</text>
-            <g class="lock rlock2" transform="translate(112,84)"><text font-size="15">🔒</text></g>
+          <!-- room 2: expenses (banknote) -->
+          <g transform="translate(175,68)">
+            <rect x="0" y="0" width="130" height="114" rx="8" class="fpanel ln"/>
+            <rect x="39" y="18" width="52" height="34" rx="4" class="fgreen ln"/>
+            <circle cx="65" cy="35" r="8" class="fbg ln"/><text x="65" y="39" text-anchor="middle" class="tx">$</text>
+            <text x="65" y="76" text-anchor="middle" class="tx">EXPENSES</text>
+            <rect x="52" y="80" width="26" height="34" rx="3" class="fbg ln"/>
+            <g transform="translate(65,95)"><g class="rlock2">
+              <rect x="-6" y="-1" width="12" height="9" rx="2" class="fsun ln"/>
+              <path d="M-3 -1 v-3 a3 3 0 0 1 6 0 v3" class="lnt"/>
+              <circle cx="0" cy="3.5" r="1.4" class="fbg"/>
+            </g></g>
           </g>
-          <!-- room 3 -->
-          <g transform="translate(324,66)">
-            <rect x="0" y="0" width="128" height="100" rx="8" class="fpanel stk"/>
-            <text x="64" y="46" text-anchor="middle" font-size="26">🎨</text>
-            <text x="64" y="74" text-anchor="middle" class="tx">GALLERY</text>
-            <g class="lock rlock3" transform="translate(112,84)"><text font-size="15">🔒</text></g>
+          <!-- room 3: gallery (framed picture) -->
+          <g transform="translate(322,68)">
+            <rect x="0" y="0" width="130" height="114" rx="8" class="fpanel ln"/>
+            <rect x="41" y="14" width="48" height="40" rx="3" class="fbg ln"/>
+            <circle cx="53" cy="26" r="4" class="fsun"/>
+            <path d="M44 52 l11 -15 l8 9 l6 -7 l17 13 z" class="fblue ln" stroke-width="2"/>
+            <text x="65" y="76" text-anchor="middle" class="tx">GALLERY</text>
+            <rect x="52" y="80" width="26" height="34" rx="3" class="fbg ln"/>
+            <g transform="translate(65,95)"><g class="rlock3">
+              <rect x="-6" y="-1" width="12" height="9" rx="2" class="fsun ln"/>
+              <path d="M-3 -1 v-3 a3 3 0 0 1 6 0 v3" class="lnt"/>
+              <circle cx="0" cy="3.5" r="1.4" class="fbg"/>
+            </g></g>
           </g>
 
-          <!-- intruder trying to cross from room 2 into room 3, bouncing off -->
-          <g class="intruder" transform="translate(300,150)">
-            <text font-size="18">⚡</text>
-          </g>
+          <!-- a "sneaky" coral arrow lunges at the building wall by room 3 and is repelled -->
+          <g transform="translate(452,150)"><g class="intruder">
+            <path d="M22 0 h-20 M8 -5 l-6 5 l6 5" class="ln" stroke="var(--accent)"/>
+          </g></g>
+          <g transform="translate(456,150)"><g class="spark">
+            <path d="M0 -7 l2.6 4.4 l5.4 -1.8 l-3.6 4.4 l3.6 4.4 l-5.4 -1.8 l-2.6 4.4 l-2.6 -4.4 l-5.4 1.8 l3.6 -4.4 l-3.6 -4.4 l5.4 1.8 z" class="fcoral ln" stroke-width="1.5"/>
+          </g></g>
         </svg>
       </div>
 
       <div class="cards">
-        <div class="card">
-          <h3>OWN KEY</h3>
-          <p>Each room has its own lock and key. No shared master key means no app can quietly read another app’s data.</p>
-        </div>
-        <div class="card">
-          <h3>OWN LIMITS</h3>
-          <p>Each room gets a fixed slice of power. A greedy app can’t hog the whole building or slow everyone else down.</p>
-        </div>
+        <div class="card"><h3>OWN KEY</h3><p>Each room has its own lock and key. No shared master key means no app can quietly read another app’s data.</p></div>
+        <div class="card"><h3>OWN LIMITS</h3><p>Each room gets a fixed slice of power. A greedy app can’t hog the whole building or slow everyone else down.</p></div>
       </div>
     </div>
   </section>
@@ -275,57 +303,50 @@
   <!-- 4. POCKETBASE TWO DOORS -->
   <section>
     <div class="reveal">
-      <div class="kicker">APPS THAT REMEMBER</div>
+      <div class="head"><span class="num">04</span><span class="kicker">APPS THAT REMEMBER</span></div>
       <h2>A filing cabinet with two doors</h2>
       <p class="body">Some apps need to <b>remember things</b> — your saved receipts, your high score. Those apps get a private filing cabinet. It has two separate doors, and that separation is what keeps your data both usable and safe.</p>
 
       <div class="panel stage">
-        <svg viewBox="0 0 480 210" width="100%" role="img" aria-label="A filing cabinet with a front door for visitors and a back door for the maker.">
+        <svg viewBox="0 0 480 200" width="100%" role="img" aria-label="A filing cabinet with a front door for visitors and a back door for the maker.">
           <!-- cabinet -->
-          <rect x="180" y="30" width="120" height="150" rx="10" class="fpanel stk"/>
-          <line x1="180" y1="80" x2="300" y2="80" class="stk"/>
-          <line x1="180" y1="130" x2="300" y2="130" class="stk"/>
-          <circle cx="240" cy="55" r="4" class="facc stk"/>
-          <circle cx="240" cy="105" r="4" class="facc stk"/>
-          <circle cx="240" cy="155" r="4" class="facc stk"/>
-          <text x="240" y="200" text-anchor="middle" class="tx">YOUR DATA</text>
+          <rect x="188" y="26" width="104" height="150" rx="8" class="fpanel ln"/>
+          <line x1="188" y1="76" x2="292" y2="76" class="ln"/>
+          <line x1="188" y1="126" x2="292" y2="126" class="ln"/>
+          <rect x="230" y="46" width="20" height="6" rx="3" class="fcoral ln" stroke-width="2"/>
+          <rect x="230" y="96" width="20" height="6" rx="3" class="fcoral ln" stroke-width="2"/>
+          <rect x="230" y="146" width="20" height="6" rx="3" class="fcoral ln" stroke-width="2"/>
+          <text x="240" y="193" text-anchor="middle" class="tx">YOUR DATA</text>
 
-          <!-- front door: visitors -->
-          <g transform="translate(30,74)">
-            <text x="24" y="20" text-anchor="middle" font-size="26">🧑</text>
-            <text x="24" y="46" text-anchor="middle" class="txm">Visitors</text>
+          <!-- visitor figure (front) -->
+          <g transform="translate(40,74)">
+            <circle cx="26" cy="12" r="11" class="fpanel ln"/>
+            <path d="M6 44 a20 20 0 0 1 40 0" class="fpanel ln"/>
+            <text x="26" y="64" text-anchor="middle" class="txm">Visitors</text>
           </g>
-          <line x1="96" y1="88" x2="176" y2="98" class="stk fgood" marker-end="url(#arrow)"/>
-          <text x="132" y="82" text-anchor="middle" class="tx">FRONT</text>
+          <path d="M96 92 h84" class="ln" stroke="var(--good)" marker-end="url(#ah)"/>
+          <text x="138" y="82" text-anchor="middle" class="tx">FRONT</text>
 
-          <!-- back door: the maker -->
-          <g transform="translate(408,74)">
-            <text x="24" y="20" text-anchor="middle" font-size="26">🧑‍💻</text>
-            <text x="24" y="46" text-anchor="middle" class="txm">You</text>
+          <!-- maker figure (back) with laptop -->
+          <g transform="translate(392,74)">
+            <circle cx="26" cy="12" r="11" class="fpanel ln"/>
+            <path d="M6 40 a20 20 0 0 1 40 0" class="fpanel ln"/>
+            <rect x="16" y="34" width="20" height="12" rx="1" class="fblue ln" stroke-width="2"/>
+            <text x="26" y="64" text-anchor="middle" class="txm">You</text>
           </g>
-          <line x1="404" y1="98" x2="304" y2="98" class="stk fsky" marker-end="url(#arrow2)"/>
-          <text x="352" y="82" text-anchor="middle" class="tx">BACK</text>
+          <path d="M384 92 h-84" class="ln" stroke="var(--sky)" marker-end="url(#ah2)"/>
+          <text x="342" y="82" text-anchor="middle" class="tx">BACK</text>
 
           <defs>
-            <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M0 0 L10 5 L0 10 z" class="fgood"/>
-            </marker>
-            <marker id="arrow2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M0 0 L10 5 L0 10 z" class="fsky"/>
-            </marker>
+            <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="fgreen"/></marker>
+            <marker id="ah2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="fblue"/></marker>
           </defs>
         </svg>
       </div>
 
       <div class="cards">
-        <div class="card">
-          <h3>FRONT DOOR · VISITORS</h3>
-          <p>Anyone using the app comes in the front. Strict rules mean they only ever see <i>their own</i> stuff — never anyone else’s.</p>
-        </div>
-        <div class="card">
-          <h3>BACK DOOR · THE MAKER</h3>
-          <p>You send the app’s behind-the-scenes instructions through a separate back door — kept well away from the visitors and the data.</p>
-        </div>
+        <div class="card"><h3>FRONT DOOR · VISITORS</h3><p>Anyone using the app comes in the front. Strict rules mean they only ever see <i>their own</i> stuff — never anyone else’s.</p></div>
+        <div class="card"><h3>BACK DOOR · THE MAKER</h3><p>You send the app’s behind-the-scenes instructions through a separate back door — kept well away from the visitors and the data.</p></div>
       </div>
     </div>
   </section>
@@ -333,7 +354,7 @@
   <!-- 5. THE GALLERY -->
   <section>
     <div class="reveal">
-      <div class="kicker">ALL TOGETHER</div>
+      <div class="head"><span class="num">05</span><span class="kicker">ALL TOGETHER</span></div>
       <h2>Every app on one shelf</h2>
       <div class="panel">
         <p class="body">The moment a new app goes live, it automatically appears on the front page — a gallery of everything in the workshop. Nobody adds it by hand; the shelf notices its new neighbour and puts up a card.</p>
@@ -345,32 +366,31 @@
   <!-- CTA -->
   <section class="cta">
     <div class="reveal">
-      <div class="emoji" style="font-size:3rem">🎨</div>
+      <svg width="60" height="60" viewBox="0 0 60 60" role="img" aria-label="gallery">
+        <rect x="8" y="14" width="44" height="34" rx="4" class="fpanel ln"/>
+        <circle cx="20" cy="25" r="4" class="fsun"/>
+        <path d="M13 46 l13 -16 l9 10 l7 -8 l7 14 z" class="fblue ln" stroke-width="2"/>
+      </svg>
+      <br>
       <a class="btn" href="https://create.solhann.net">SEE ALL THE APPS →</a>
     </div>
   </section>
 
-  <footer>
-    Made in the solhann.net workshop · <a href="https://create.solhann.net">back to the gallery</a>
-  </footer>
+  <footer>Made in the solhann.net workshop · <a href="https://create.solhann.net">back to the gallery</a></footer>
 
   <script>
-    // dark/light toggle (shared platform pattern)
     const root=document.documentElement, tbtn=document.getElementById('t');
     const setTheme=t=>{ root.setAttribute('data-theme',t); tbtn.textContent=t==='dark'?'LIGHT':'DARK'; localStorage.setItem('solhann_theme',t); };
     setTheme(localStorage.getItem('solhann_theme')||'light');
     tbtn.onclick=()=>setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark');
 
-    // scroll-progress bar
     const bar=document.getElementById('progress');
-    const onScroll=()=>{ const h=document.documentElement; const p=h.scrollTop/(h.scrollHeight-h.clientHeight||1); bar.style.width=(p*100)+'%'; };
+    const onScroll=()=>{ const h=document.documentElement; bar.style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight||1)*100)+'%'; };
     document.addEventListener('scroll', onScroll, {passive:true}); onScroll();
 
-    // reveal-on-scroll
-    const revIO=new IntersectionObserver((es)=>{ es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); revIO.unobserve(e.target); } }); }, {threshold:.18});
+    const revIO=new IntersectionObserver((es)=>{ es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); revIO.unobserve(e.target); } }); }, {threshold:.16});
     document.querySelectorAll('.reveal').forEach(el=>revIO.observe(el));
 
-    // start/stop the pipeline + rooms animations only while on screen (saves battery)
     const runIO=new IntersectionObserver((es)=>{ es.forEach(e=>e.target.classList.toggle('go', e.isIntersecting)); }, {threshold:.25});
     ['pipeStage','roomsStage'].forEach(id=>{ const el=document.getElementById(id); if(el) runIO.observe(el); });
   </script>
