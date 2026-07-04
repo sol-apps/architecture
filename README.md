@@ -12,9 +12,3 @@ A friendly, no-jargon tour of how this little platform turns an idea into a live
 
 **Live:** https://architecture.solhann.net
 **Gallery:** https://create.solhann.net
-
----
-
-Built on the [solhann.net](https://create.solhann.net) platform. Static site — every push to `main`
-auto-deploys via GitHub Actions → rsync → `/var/www/apps/architecture/`. The front matter above is what the
-gallery reads to render this app's tile, so keep `title` / `description` / `emoji` up to date.

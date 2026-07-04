@@ -94,6 +94,7 @@
     .card h3{ font-family:"Press Start 2P",monospace; font-size:9.5px; margin-bottom:9px; color:var(--accent); line-height:1.55; }
     .card p{ font-size:.87rem; color:var(--ink); font-weight:500; }
     @media(max-width:560px){ .cards{ grid-template-columns:1fr; } .pipe-cap{ font-size:.68rem; } .pipe-cap b{ font-size:7px; } }
+    @media(max-width:480px){ .stats{ grid-template-columns:1fr; } .pipe-cap{ grid-template-columns:1fr 1fr; } }
 
     /* "under the hood" progressive-disclosure blocks */
     details.uh{ margin-top:16px; border:3px solid var(--line); border-radius:10px; background:var(--panel); box-shadow:4px 4px 0 var(--line); }
@@ -180,7 +181,7 @@
         </svg>
       </div>
     </div>
-    <h1>How solhann.net works</h1>
+    <h1>How it works</h1>
     <p class="lede">One rented server runs a handful of small web apps, each at its own address. This page is about two things: getting a change live in half a minute, and making sure no app can ever read its neighbour’s data.</p>
     <div class="scrollcue">▼</div>
   </section>
