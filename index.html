@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>How solhann.net works</title>
-  <meta name="description" content="One small server running a family of independent web apps — each at its own address, each sealed off from the rest. How a change gets live, and the walls that keep every app in its lane.">
+  <meta name="description" content="A rented server runs a handful of small web apps, each at its own address. A plain-English walk through how a change gets live in half a minute, and why one app can never read another's data.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -95,6 +95,20 @@
     .card p{ font-size:.87rem; color:var(--ink); font-weight:500; }
     @media(max-width:560px){ .cards{ grid-template-columns:1fr; } .pipe-cap{ font-size:.68rem; } .pipe-cap b{ font-size:7px; } }
 
+    /* "under the hood" progressive-disclosure blocks */
+    details.uh{ margin-top:16px; border:3px solid var(--line); border-radius:10px; background:var(--panel); box-shadow:4px 4px 0 var(--line); }
+    details.uh summary{ list-style:none; cursor:pointer; font-family:"Press Start 2P",monospace; font-size:9px; color:var(--accent);
+      padding:14px 16px; display:flex; align-items:center; gap:11px; user-select:none; }
+    details.uh summary::-webkit-details-marker{ display:none; }
+    details.uh summary::before{ content:"▸"; display:inline-block; transition:transform .2s; }
+    details.uh[open] summary::before{ transform:rotate(90deg); }
+    .uh .uhbody{ padding:2px 18px 18px; font-size:.92rem; color:var(--ink); line-height:1.7; }
+    .uh .uhbody p + p{ margin-top:12px; }
+    .uh code{ font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace; font-size:.84em; background:var(--bg);
+      border:1.5px solid var(--line); border-radius:5px; padding:1px 5px; word-break:break-word; }
+    .uh a{ color:var(--accent); font-weight:700; text-decoration:none; border-bottom:2px solid currentColor; }
+    .uh a:hover{ opacity:.8; }
+
     .cta{ text-align:center; }
     .btn{ display:inline-block; margin-top:14px; font-family:"Press Start 2P",monospace; font-size:12px; color:var(--panel);
       background:var(--accent); border:3px solid var(--line); border-radius:8px; padding:17px 24px; text-decoration:none; box-shadow:5px 5px 0 var(--line); }
@@ -167,7 +181,7 @@
       </div>
     </div>
     <h1>How solhann.net works</h1>
-    <p class="lede">One small server runs a whole family of web apps — each at its own address, each sealed off from the others. Here’s the path a change takes to get live, and the walls that keep every app in its lane.</p>
+    <p class="lede">One rented server runs a handful of small web apps, each at its own address. This page is about two things: getting a change live in half a minute, and making sure no app can ever read its neighbour’s data.</p>
     <div class="scrollcue">▼</div>
   </section>
 
@@ -184,8 +198,8 @@
       <div class="head"><span class="num">01</span><span class="kicker">THE SETUP</span></div>
       <h2>One server, many front doors</h2>
       <div class="panel">
-        <p class="body">Every app here has its own address — <b>quiz.solhann.net</b>, <b>expenses.solhann.net</b> — and behaves as though it owns the machine. In reality they all share a single rented server. The point is that none of them can tell, and none of them can reach each other.</p>
-        <p class="body">Adding one is a single command. Getting a change live is a single push. Everything between — the checking, the delivery, the publishing — happens on its own. The rest of this page is what “on its own” actually means.</p>
+        <p class="body">Each app has its own address — <b>quiz.solhann.net</b>, <b>expenses.solhann.net</b> — and runs as if it owned the server. It doesn’t. Everything’s on one box. But an app can’t see the others, let alone reach into them.</p>
+        <p class="body">Spinning up a new app takes one command. After that, pushing your code is the only step you do by hand. The rest runs itself.</p>
       </div>
     </div>
   </section>
@@ -195,7 +209,7 @@
     <div class="reveal">
       <div class="head"><span class="num">02</span><span class="kicker">SHIPPING</span></div>
       <h2>From save to live in about thirty seconds</h2>
-      <p class="body">You change something and send it once. From there it’s automatic: the change is checked for mistakes, delivered to the server, and published to the web — no manual steps, no logging in anywhere.</p>
+      <p class="body">You edit a file and push it. That’s the last time a person is involved. A build kicks off, checks the change for anything obviously broken, copies the result onto the server, and the live site updates. Usually inside thirty seconds.</p>
 
       <div class="panel stage" id="pipeStage">
         <svg viewBox="0 0 500 150" width="100%" role="img" aria-label="A change moves along four stages: your computer, a check, the server, and the live website.">
@@ -259,7 +273,16 @@
           <span><b>IT’S LIVE</b>for everyone, in seconds</span>
         </div>
       </div>
-      <p class="aside">The delivery route is deliberately powerless: it can drop new files at exactly one spot and do nothing else — no reading data, no opening other apps, no running commands. If the automation were ever hijacked, there’d be almost nothing worth hijacking.</p>
+      <p class="aside">The thing doing the copying has almost no power on the server. Its login can write files into one folder and that’s it — no shell, nothing it can read back. If those credentials leaked tomorrow, the worst anyone could do is push a bad version of an app that already trusts them.</p>
+
+      <details class="uh">
+        <summary>UNDER THE HOOD</summary>
+        <div class="uhbody">
+          <p>The deploy credential is an SSH key with a forced command in <code>authorized_keys</code>: <code>command="rrsync /var/www/apps"</code>. Whoever holds it can run exactly one thing — <code>rsync</code>, scoped to that one folder. No shell, no other commands, even with the key in hand.</p>
+          <p>Server-side code for data apps rides a second key pinned to <code>rrsync -wo</code> (write-only), so it can drop new logic in but can’t read anything back out. The build and copy themselves run in GitHub Actions from one shared workflow.</p>
+          <p><a href="https://github.com/sol-apps/architecture" target="_blank" rel="noopener">Read this page’s source →</a></p>
+        </div>
+      </details>
     </div>
   </section>
 
@@ -268,7 +291,8 @@
     <div class="reveal">
       <div class="head"><span class="num">03</span><span class="kicker">ISOLATION</span></div>
       <h2>Every app in a locked room</h2>
-      <p class="body">One server, but each app runs as its own user in its own space with its own key. An app can only reach its own files. If one breaks — a bug, a runaway process, even hostile code — it stays boxed in: it can’t read the app next door, and it can’t take the machine down with it.</p>
+      <p class="body">The apps share a machine, but not an account. Each one runs as its own Linux user that owns a single folder. When an app asks for a file in another app’s folder, the operating system refuses — the same way your laptop stops one login from opening another’s files.</p>
+      <p class="body">That covers ordinary bugs. It also covers an app that’s actively hostile, because the design assumes any app might run code nobody vetted.</p>
 
       <div class="panel stage" id="roomsStage">
         <svg viewBox="0 0 480 210" width="100%" role="img" aria-label="Three separate locked rooms in one building; a hostile arrow is repelled at the wall.">
@@ -323,9 +347,18 @@
       </div>
 
       <div class="cards">
-        <div class="card"><h3>ITS OWN KEY</h3><p>No shared master key. An app literally cannot open another app’s data — the operating system refuses at the door.</p></div>
-        <div class="card"><h3>ITS OWN LIMITS</h3><p>Memory and processing are capped per app. A greedy or broken one only ever slows itself down, never its neighbours.</p></div>
+        <div class="card"><h3>ITS OWN KEY</h3><p>No shared master key. One app reaching for another’s files gets stopped by the kernel itself, not by a policy we’re trusting to hold.</p></div>
+        <div class="card"><h3>ITS OWN LIMITS</h3><p>Every app has a hard cap on memory and CPU. A runaway one slows itself down and leaves the rest of the box alone.</p></div>
       </div>
+
+      <details class="uh">
+        <summary>UNDER THE HOOD</summary>
+        <div class="uhbody">
+          <p>Each app is a <code>systemd</code> service running as a dedicated user (<code>pb-&lt;app&gt;</code>), with its data folder at mode <code>750</code> — unreadable to any other user.</p>
+          <p>The service is sandboxed: <code>ProtectSystem=strict</code> with <code>ReadWritePaths=</code> set to just that folder, an empty <code>CapabilityBoundingSet=</code> (no root powers at all), <code>SystemCallFilter=@system-service</code>, and <code>MemoryDenyWriteExecute=yes</code>. Resource caps are <code>MemoryMax=256M</code>, <code>CPUQuota=50%</code>, <code>TasksMax=64</code>.</p>
+          <p>So even code running flat-out inside an app can’t step outside its folder or starve the machine. Full list of these knobs: <a href="https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html" target="_blank" rel="noopener">systemd sandboxing options →</a></p>
+        </div>
+      </details>
     </div>
   </section>
 
@@ -334,7 +367,7 @@
     <div class="reveal">
       <div class="head"><span class="num">04</span><span class="kicker">STORAGE</span></div>
       <h2>Two doors on the filing cabinet</h2>
-      <p class="body">Some apps remember things — your receipts, your saved game. Each of those gets a private database with two separate entrances, and keeping them apart is the entire point.</p>
+      <p class="body">Some apps store things — receipts, scores, whatever people save. Each of those gets its own small database, with two ways in that never cross.</p>
 
       <div class="panel stage">
         <svg viewBox="0 0 480 200" width="100%" role="img" aria-label="A filing cabinet with a front door for visitors and a back door for the maker.">
@@ -368,9 +401,17 @@
       </div>
 
       <div class="cards">
-        <div class="card"><h3>FRONT DOOR · VISITORS</h3><p>Where the app’s users come in. Rules run on every request, so each person sees only their own records — never anyone else’s.</p></div>
-        <div class="card"><h3>BACK DOOR · THE MAKER</h3><p>Where you send the code that runs inside the app. It travels a separate channel that can write instructions but can’t read the data.</p></div>
+        <div class="card"><h3>FRONT DOOR · VISITORS</h3><p>Where visitors land. Every read runs through a rule that checks who’s asking, so people only ever get their own rows back.</p></div>
+        <div class="card"><h3>BACK DOOR · THE MAKER</h3><p>Where you push the app’s server-side code. That channel can add new logic but can’t read the stored data, so a bug you ship can’t quietly leak the database.</p></div>
       </div>
+
+      <details class="uh">
+        <summary>UNDER THE HOOD</summary>
+        <div class="uhbody">
+          <p>Storage is <a href="https://pocketbase.io/docs/api-rules-and-filters/" target="_blank" rel="noopener">PocketBase</a>, one instance per app, bound to <code>127.0.0.1</code> behind <a href="https://caddyserver.com/docs/" target="_blank" rel="noopener">Caddy</a>. Front-door access is governed by rule expressions checked on every query — for example <code>owner = @request.headers.x_owner</code> — so an app can’t forget to scope a read.</p>
+          <p>The admin console is restricted to an allowlisted IP. The back door, where hook code lands, is the write-only key from section 02 — it can add behaviour but never read what’s stored.</p>
+        </div>
+      </details>
     </div>
   </section>
 
@@ -380,8 +421,8 @@
       <div class="head"><span class="num">05</span><span class="kicker">THE GALLERY</span></div>
       <h2>It assembles itself</h2>
       <div class="panel">
-        <p class="body">Publish a new app and it appears on the front page on its own — no list to maintain, no card to lay out by hand. The gallery notices the new neighbour and adds it.</p>
-        <p class="aside">This page is one of those neighbours — built, checked, and shipped in exactly the way everything above describes.</p>
+        <p class="body">Publish an app and it shows up on the front page by itself. There’s no list to keep. The gallery scans for tagged repos and builds the grid from whatever it finds.</p>
+        <p class="aside">This page is one of those apps. It went through every step above to get here — which is also why its source is public.</p>
       </div>
     </div>
   </section>
