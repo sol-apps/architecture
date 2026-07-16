@@ -280,7 +280,7 @@
         <summary>UNDER THE HOOD</summary>
         <div class="uhbody">
           <p>The deploy credential is an SSH key with a forced command in <code>authorized_keys</code>: <code>command="rrsync /var/www/apps"</code>. Whoever holds it can run exactly one thing — <code>rsync</code>, scoped to that one folder. No shell, no other commands, even with the key in hand.</p>
-          <p>Server-side code for data apps rides a second key pinned to <code>rrsync -wo</code> (write-only), so it can drop new logic in but can’t read anything back out. The build and copy themselves run in GitHub Actions from one shared workflow.</p>
+          <p>Data apps deliver their server-side code over a second channel, and each app has its <em>own</em> key here — pinned to <code>rrsync -wo</code> (write-only) and locked to that one app’s folder. It can drop new logic in but can’t read anything back, and it can’t touch another app. So a leaked key only ever affects the app it belongs to. The build and copy themselves run in GitHub Actions from one shared workflow.</p>
           <p><a href="https://github.com/sol-apps/architecture" target="_blank" rel="noopener">Read this page’s source →</a></p>
         </div>
       </details>
@@ -410,7 +410,7 @@
         <summary>UNDER THE HOOD</summary>
         <div class="uhbody">
           <p>Storage is <a href="https://pocketbase.io/docs/api-rules-and-filters/" target="_blank" rel="noopener">PocketBase</a>, one instance per app, bound to <code>127.0.0.1</code> behind <a href="https://caddyserver.com/docs/" target="_blank" rel="noopener">Caddy</a>. Front-door access is governed by rule expressions checked on every query — for example <code>owner = @request.headers.x_owner</code> — so an app can’t forget to scope a read.</p>
-          <p>The admin console is restricted to an allowlisted IP. The back door, where hook code lands, is the write-only key from section 02 — it can add behaviour but never read what’s stored.</p>
+          <p>The admin console is protected by a long, random password that’s unique to each app — there’s no shared login. The back door, where hook code lands, is the write-only key from section 02 — it can add behaviour but never read what’s stored.</p>
         </div>
       </details>
     </div>
