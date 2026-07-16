@@ -419,7 +419,33 @@
   <!-- 05 -->
   <section>
     <div class="reveal">
-      <div class="head"><span class="num">05</span><span class="kicker">THE GALLERY</span></div>
+      <div class="head"><span class="num">05</span><span class="kicker">SAFE CHANGES</span></div>
+      <h2>Changing the data’s shape, without losing it</h2>
+      <p class="body">Editing a page is easy to undo. Changing how the <b>data</b> is stored — adding a “date” to every saved receipt, say — is riskier, because there’s real information already sitting there. So those changes take a slower, safer road.</p>
+      <p class="body">You rehearse the change on a throwaway copy on your own computer first. When it ships, the server doesn’t just apply it and hope: it takes a full backup, makes the change, then checks the app still answers. If something’s wrong, it sets that change aside and keeps the app running on whatever worked a moment ago.</p>
+
+      <div class="cards">
+        <div class="card"><h3>A BACKUP, EVERY TIME</h3><p>Before the server touches your stored data, it saves a complete copy. A change gone wrong is a restore away, not a disaster.</p></div>
+        <div class="card"><h3>A BAD ONE STEPS ASIDE</h3><p>If a change fails, it’s set aside and the app carries on with the last version that worked — no downtime, no half-broken state.</p></div>
+      </div>
+
+      <p class="aside">Nobody edits the live data by hand. Even the person who builds the apps has no direct login to the live server — the only way a change reaches real data is through this reviewed, backed-up path.</p>
+
+      <details class="uh">
+        <summary>UNDER THE HOOD</summary>
+        <div class="uhbody">
+          <p>Data-shape changes are PocketBase <em>migration</em> files, committed to the repo alongside the code. On the server a watcher runs <code>pb-migrate</code>: it stops the app, tarballs the data into <code>/var/backups</code> (keeping the last ten), applies the migrations one at a time, restarts, and probes <code>/api/health</code>.</p>
+          <p>A migration that fails is moved into <code>pb_migrations_failed/</code> so the app recovers on its previous schema instead of restarting forever. And the dev machine has <b>no root login to the live server at all</b> — code and schema can only arrive through this automated path, never a manual poke.</p>
+          <p><a href="https://pocketbase.io/docs/go-migrations/" target="_blank" rel="noopener">How PocketBase migrations work →</a></p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- 06 -->
+  <section>
+    <div class="reveal">
+      <div class="head"><span class="num">06</span><span class="kicker">THE GALLERY</span></div>
       <h2>It assembles itself</h2>
       <div class="panel">
         <p class="body">Publish an app and it shows up on the front page by itself. There’s no list to keep. The gallery scans for tagged repos and builds the grid from whatever it finds.</p>
