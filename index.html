@@ -1,522 +1,871 @@
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>How solhann.net works</title>
-  <meta name="description" content="A rented server runs a handful of small web apps, each at its own address. A plain-English walk through how a change gets live in half a minute, and why one app can never read another's data.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Press+Start+2P&display=swap" rel="stylesheet">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🏗️%3C/text%3E%3C/svg%3E">
-  <style>
-    :root{
-      --bg:#FFB84D; --ink:#2b2b29; --muted:#75736b; --panel:#fffaf0; --line:#2b2b29; --accent:#D56062;
-      --good:#3f8f5c; --sky:#5aa9d6; --grid:rgba(43,43,41,.055);
-    }
-    [data-theme="dark"]{
-      --bg:#3a3b39; --ink:#FFB84D; --muted:#b3aa8a; --panel:#4a4b48; --line:#131312; --accent:#ff9aa0;
-      --good:#83d69f; --sky:#8fd0ee; --grid:rgba(0,0,0,.22);
-    }
-    *{ margin:0; box-sizing:border-box; }
-    html{ scroll-behavior:smooth; }
-    body{
-      font-family:"Orbitron",sans-serif; color:var(--ink); background:var(--bg);
-      line-height:1.65; overflow-x:hidden; transition:background-color .3s,color .3s;
-    }
-    body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
-      background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
-      background-size:36px 36px; }
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>solhann.net · greenlight architecture</title>
+<meta name="description" content="An inspectable map of the greenlight pipeline: what lives on the laptop, in each GitHub org, and on prod — and which credential authorises every line between them.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🟩%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --paper:#e6e1c5; --paper2:#ece8d0; --panel:#efebd6; --ink:#33321f; --mut:#807c5e;
+  --line:#4a4936; --faint:#c9c4a4;
+  --red:#a63d2c; --blue:#3d648f; --olive:#6f7d4a; --amber:#a5731f; --grn:#4a7a52;
+}
+*{margin:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  background:var(--paper); color:var(--ink); font-size:13px; line-height:1.55;
+  display:flex; flex-direction:column; overflow:hidden;
+}
+b{font-weight:700}
+code{font-size:.92em; background:var(--paper2); border:1px solid var(--faint); border-radius:3px; padding:0 4px; word-break:break-word}
 
-    .progress{ position:fixed; top:0; left:0; height:5px; width:0; background:var(--accent); border-bottom:2px solid var(--line); z-index:60; }
-    .toggle{ position:fixed; top:14px; right:14px; z-index:60; font-family:"Press Start 2P",monospace; font-size:9px;
-      padding:9px 11px; border:3px solid var(--line); border-radius:6px; background:var(--panel); color:var(--ink);
-      cursor:pointer; box-shadow:3px 3px 0 var(--line); }
-    .toggle:active{ transform:translate(2px,2px); box-shadow:none; }
+/* ---------- top bar ---------- */
+header{
+  flex:none; display:flex; flex-wrap:wrap; align-items:stretch; border-bottom:1.5px solid var(--line);
+  background:var(--paper); font-size:11px; user-select:none;
+}
+@media (max-width:1420px){ header .cell.opt{ display:none } }
+header .cell{ border-right:1.5px solid var(--line); padding:7px 11px; display:flex; flex-direction:column; justify-content:center; white-space:nowrap; }
+header .cell .k{ font-size:9px; letter-spacing:.12em; color:var(--mut); text-transform:uppercase }
+header .cell .v{ font-weight:600 }
+header .brand .v{ font-weight:700 }
+header .spacer{ flex:1; border-right:0 }
+header .btns{ display:flex; align-items:center; gap:8px; padding:0 12px; }
+.btn{
+  font:inherit; font-size:10px; font-weight:600; letter-spacing:.06em; cursor:pointer;
+  color:var(--ink); background:var(--paper2); border:1.5px solid var(--line); padding:6px 10px;
+}
+.btn:hover{ background:var(--ink); color:var(--paper) }
+.btn.primary{ background:var(--ink); color:var(--paper) }
+.btn.primary:hover{ background:var(--red); border-color:var(--red) }
+.btn[disabled]{ opacity:.4; cursor:default }
 
-    section{ max-width:820px; margin:0 auto; padding:60px 22px; }
+/* ---------- main ---------- */
+main{ flex:1; display:flex; min-height:0 }
 
-    /* ---------- hero ---------- */
-    .hero{ min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:8px; }
-    .win{ width:min(430px,84vw); border:3px solid var(--line); border-radius:14px; background:var(--panel);
-      box-shadow:9px 9px 0 var(--line); overflow:hidden; }
-    .win .bar{ display:flex; align-items:center; gap:11px; padding:11px 14px; border-bottom:3px solid var(--line); }
-    .dot{ width:11px; height:11px; border-radius:50%; border:2px solid var(--line); }
-    .addr{ flex:1; text-align:left; font-weight:700; font-size:.82rem; letter-spacing:.02em; background:var(--bg);
-      border:2px solid var(--line); border-radius:20px; padding:6px 14px; color:var(--ink); white-space:nowrap; overflow:hidden; }
-    .addr .host{ color:var(--accent); }
-    .caret{ display:inline-block; width:8px; height:1em; background:var(--ink); vertical-align:-2px; margin-left:1px; animation:blink 1.05s step-end infinite; }
-    @keyframes blink{ 50%{ opacity:0; } }
-    .screen{ position:relative; aspect-ratio:16/10; display:grid; place-items:center; overflow:hidden; }
-    .screen::after{ content:""; position:absolute; inset:0; pointer-events:none;
-      background:repeating-linear-gradient(transparent 0 3px, rgba(0,0,0,.035) 3px 4px); }
-    .screen svg{ width:64%; }
+/* sidebar */
+#side{
+  flex:none; width:218px; border-right:1.5px solid var(--line); overflow-y:auto;
+  background:var(--paper); padding-bottom:20px;
+}
+#side .grp{ border-bottom:1px solid var(--faint); padding:10px 0 8px }
+#side .grp>.gl{ padding:0 14px 6px; font-size:9px; letter-spacing:.14em; color:var(--mut); text-transform:uppercase; display:flex; justify-content:space-between }
+#side .grp>.gl i{ font-style:normal }
+#side button.item{
+  display:flex; width:100%; text-align:left; font:inherit; font-size:11px; gap:8px; align-items:center;
+  background:none; border:0; border-left:3px solid transparent; padding:4px 14px 4px 11px; cursor:pointer; color:var(--ink);
+}
+#side button.item:hover{ background:var(--paper2) }
+#side button.item.on{ border-left-color:var(--red); background:var(--paper2); font-weight:600 }
+#side button.item .sw{ flex:none; width:8px; height:8px; border:1px solid var(--line); }
+#side button.item small{ margin-left:auto; color:var(--mut); font-size:9px }
 
-    h1{ font-family:"Press Start 2P",monospace; font-size:clamp(1.35rem,6vw,2.7rem); line-height:1.42; margin:26px 0 16px; text-shadow:4px 4px 0 rgba(0,0,0,.18); }
-    .lede{ max-width:52ch; font-weight:500; color:var(--ink); opacity:.9; font-size:1.02rem; }
-    .scrollcue{ margin-top:38px; font-family:"Press Start 2P",monospace; font-size:9px; color:var(--accent); animation:bob 2.1s ease-in-out infinite; }
+/* map */
+#map{ flex:1; position:relative; min-width:0; background:var(--paper);
+  background-image:radial-gradient(var(--faint) 1px, transparent 1px); background-size:26px 26px; }
+#map svg{ position:absolute; inset:0; width:100%; height:100%; display:block; cursor:grab }
+#map svg.panning{ cursor:grabbing }
+#zoomui{ position:absolute; top:10px; right:10px; display:flex; flex-direction:column; gap:4px }
+#zoomui .btn{ width:28px; padding:4px 0; text-align:center }
+#maphint{ position:absolute; left:0; right:0; bottom:0; padding:5px 12px; font-size:9.5px; letter-spacing:.08em;
+  color:var(--mut); border-top:1px solid var(--faint); background:color-mix(in srgb, var(--paper) 88%, transparent);
+  display:flex; gap:18px; flex-wrap:wrap; align-items:center }
+#maphint .lg{ display:flex; align-items:center; gap:5px }
+#maphint .lg i{ display:inline-block; width:16px; height:0; border-top:2.5px solid; font-style:normal }
 
-    /* ---------- stat strip ---------- */
-    .stats{ max-width:820px; margin:0 auto; padding:0 22px 20px; display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
-    .stat{ border:3px solid var(--line); border-radius:12px; background:var(--panel); box-shadow:5px 5px 0 var(--line); padding:18px 12px; text-align:center; }
-    .stat b{ display:block; font-family:"Press Start 2P",monospace; font-size:clamp(1rem,4vw,1.5rem); color:var(--accent); text-shadow:2px 2px 0 rgba(0,0,0,.18); }
-    .stat span{ display:block; margin-top:9px; font-size:.78rem; color:var(--muted); font-weight:600; }
+/* trace strip */
+#tracebar{ position:absolute; left:12px; top:10px; display:none; align-items:center; gap:8px;
+  background:var(--panel); border:1.5px solid var(--line); padding:6px 10px; font-size:10px; max-width:min(520px, 70%); }
+#tracebar.on{ display:flex }
+#tracebar .tt{ font-weight:700; letter-spacing:.06em }
+#tracebar .st{ color:var(--mut) }
 
-    /* ---------- section headers ---------- */
-    .head{ display:flex; align-items:center; gap:12px; margin-bottom:10px; }
-    .num{ flex:none; font-family:"Press Start 2P",monospace; font-size:11px; color:var(--panel); background:var(--accent);
-      border:3px solid var(--line); border-radius:8px; padding:8px 9px; box-shadow:3px 3px 0 var(--line); }
-    .kicker{ font-family:"Press Start 2P",monospace; font-size:10px; color:var(--accent); letter-spacing:.06em; }
-    h2{ font-family:"Press Start 2P",monospace; font-size:clamp(1rem,3.6vw,1.5rem); line-height:1.5; margin:4px 0 16px; text-shadow:2px 2px 0 rgba(0,0,0,.18); }
-    p.body{ color:var(--ink); font-weight:500; max-width:60ch; }
-    p.body + p.body{ margin-top:14px; }
-    p.body b{ font-weight:700; }
-    .aside{ margin-top:18px; color:var(--muted); font-size:.94rem; max-width:60ch; border-left:3px solid var(--accent); padding-left:14px; }
+/* detail panel */
+#panel{ flex:none; width:352px; border-left:1.5px solid var(--line); background:var(--panel);
+  overflow-y:auto; padding:16px 18px 30px }
+#panel h2{ font-size:14px; font-weight:700; line-height:1.35; margin-bottom:2px }
+#panel .sub{ font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--mut); margin-bottom:12px }
+#panel .tabs{ display:flex; gap:0; margin:10px 0 12px; border:1.5px solid var(--line) }
+#panel .tabs button{ flex:1; font:inherit; font-size:9.5px; font-weight:600; letter-spacing:.08em; padding:5px 0;
+  background:var(--paper2); color:var(--ink); border:0; border-right:1.5px solid var(--line); cursor:pointer }
+#panel .tabs button:last-child{ border-right:0 }
+#panel .tabs button.on{ background:var(--ink); color:var(--paper) }
+#panel .bd p{ margin-bottom:10px }
+#panel .bd p:last-child{ margin-bottom:0 }
+#panel .mark{ background:var(--ink); color:var(--paper); padding:0 4px }
+#panel .markr{ background:var(--red); color:var(--paper); padding:0 4px }
+#panel .credbox{ border:1.5px solid var(--line); background:var(--paper2); padding:8px 10px; font-size:11px; margin:12px 0 }
+#panel .credbox .k{ font-size:9px; letter-spacing:.12em; color:var(--mut); text-transform:uppercase }
+#panel ul{ margin:0 0 10px 16px }
+#panel li{ margin-bottom:6px }
+#panel .rel{ margin-top:14px; border-top:1px solid var(--faint); padding-top:10px }
+#panel .rel .k{ font-size:9px; letter-spacing:.12em; color:var(--mut); text-transform:uppercase; display:block; margin-bottom:6px }
+#panel .rel button{ display:block; width:100%; text-align:left; font:inherit; font-size:10.5px; background:none;
+  border:0; border-left:2px solid var(--faint); padding:2px 8px; margin-bottom:3px; cursor:pointer; color:var(--ink) }
+#panel .rel button:hover{ border-left-color:var(--red); background:var(--paper2) }
+#panel .stepnav{ display:flex; gap:8px; margin-top:14px }
 
-    .panel{ border:3px solid var(--line); border-radius:14px; background:var(--panel); box-shadow:7px 7px 0 var(--line); padding:26px; }
-    .stage{ margin:24px 0 6px; }
+/* tooltip */
+#tip{ position:fixed; z-index:50; pointer-events:none; display:none; max-width:260px;
+  background:var(--ink); color:var(--paper); font-size:10.5px; line-height:1.45; padding:6px 9px; }
+#tip b{ display:block }
+#tip .c{ color:var(--faint) }
 
-    .reveal{ opacity:0; transform:translateY(28px); transition:opacity .6s ease, transform .6s ease; }
-    .reveal.in{ opacity:1; transform:none; }
-
-    /* pipeline controls + captions */
-    .runrow{ display:flex; justify-content:center; margin-top:18px; }
-    .run{ font-family:"Press Start 2P",monospace; font-size:10px; color:var(--panel); background:var(--accent);
-      border:3px solid var(--line); border-radius:8px; padding:13px 18px; cursor:pointer; box-shadow:4px 4px 0 var(--line); }
-    .run:active{ transform:translate(3px,3px); box-shadow:none; }
-    .pipe-cap{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:20px; }
-    .pipe-cap span{ text-align:center; font-size:.74rem; color:var(--muted); line-height:1.45; }
-    .pipe-cap b{ display:block; color:var(--ink); font-family:"Press Start 2P",monospace; font-size:7.5px; margin-bottom:6px; line-height:1.5; }
-
-    .cards{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:22px; }
-    .card{ border:3px solid var(--line); border-radius:10px; background:var(--bg); padding:17px; box-shadow:4px 4px 0 var(--line); transition:transform .18s, box-shadow .18s; }
-    .card:hover{ transform:translate(-2px,-2px); box-shadow:6px 6px 0 var(--line); }
-    .card h3{ font-family:"Press Start 2P",monospace; font-size:9.5px; margin-bottom:9px; color:var(--accent); line-height:1.55; }
-    .card p{ font-size:.87rem; color:var(--ink); font-weight:500; }
-    @media(max-width:560px){ .cards{ grid-template-columns:1fr; } .pipe-cap{ font-size:.68rem; } .pipe-cap b{ font-size:7px; } }
-    @media(max-width:480px){ .stats{ grid-template-columns:1fr; } .pipe-cap{ grid-template-columns:1fr 1fr; } }
-
-    /* "under the hood" progressive-disclosure blocks */
-    details.uh{ margin-top:16px; border:3px solid var(--line); border-radius:10px; background:var(--panel); box-shadow:4px 4px 0 var(--line); }
-    details.uh summary{ list-style:none; cursor:pointer; font-family:"Press Start 2P",monospace; font-size:9px; color:var(--accent);
-      padding:14px 16px; display:flex; align-items:center; gap:11px; user-select:none; }
-    details.uh summary::-webkit-details-marker{ display:none; }
-    details.uh summary::before{ content:"▸"; display:inline-block; transition:transform .2s; }
-    details.uh[open] summary::before{ transform:rotate(90deg); }
-    .uh .uhbody{ padding:2px 18px 18px; font-size:.92rem; color:var(--ink); line-height:1.7; }
-    .uh .uhbody p + p{ margin-top:12px; }
-    .uh code{ font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace; font-size:.84em; background:var(--bg);
-      border:1.5px solid var(--line); border-radius:5px; padding:1px 5px; word-break:break-word; }
-    .uh a{ color:var(--accent); font-weight:700; text-decoration:none; border-bottom:2px solid currentColor; }
-    .uh a:hover{ opacity:.8; }
-
-    .cta{ text-align:center; }
-    .btn{ display:inline-block; margin-top:14px; font-family:"Press Start 2P",monospace; font-size:12px; color:var(--panel);
-      background:var(--accent); border:3px solid var(--line); border-radius:8px; padding:17px 24px; text-decoration:none; box-shadow:5px 5px 0 var(--line); }
-    .btn:active{ transform:translate(3px,3px); box-shadow:none; }
-    footer{ text-align:center; padding:34px 20px 70px; color:var(--muted); font-size:.85rem; }
-    footer a{ color:var(--accent); font-weight:700; text-decoration:none; }
-    footer a:hover{ text-decoration:underline; }
-
-    /* ---- SVG line-art system ---- */
-    svg .ln{ fill:none; stroke:var(--line); stroke-width:3; stroke-linejoin:round; stroke-linecap:round; }
-    svg .lnt{ fill:none; stroke:var(--line); stroke-width:2; stroke-linejoin:round; stroke-linecap:round; }
-    .fpanel{ fill:var(--panel); } .fbg{ fill:var(--bg); }
-    .fcoral{ fill:var(--accent); } .fsun{ fill:#FFB84D; } .fgreen{ fill:var(--good); } .fblue{ fill:var(--sky); }
-    .tx{ fill:var(--ink); font-family:"Press Start 2P",monospace; font-size:8px; }
-    .txm{ fill:var(--muted); font-family:"Orbitron",sans-serif; font-size:12px; font-weight:700; }
-
-    /* pipeline LED + check */
-    .led{ fill:var(--bg); stroke:var(--line); stroke-width:2; transition:fill .2s, transform .2s; }
-    .led.lit{ fill:var(--good); }
-    .check{ opacity:0; transition:opacity .3s; }
-    .check.on{ opacity:1; }
-    .room{ transition:opacity .25s; }
-    #roomsStage:hover .room:not(:hover){ opacity:.4; }
-
-    /* ambient loops (in-view only) */
-    @keyframes bob{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-9px);} }
-    .win{ animation:bob 6s ease-in-out infinite; }
-    .rlock1,.rlock2,.rlock3,.spark{ transform-box:fill-box; transform-origin:center; }
-    .go .rlock1{ animation:jiggle 3.2s ease-in-out infinite; } .go .rlock2{ animation:jiggle 3.2s ease-in-out .5s infinite; } .go .rlock3{ animation:jiggle 3.2s ease-in-out 1s infinite; }
-    @keyframes jiggle{ 0%,86%,100%{ transform:rotate(0);} 90%{ transform:rotate(-6deg);} 95%{ transform:rotate(6deg);} }
-    .go .intruder{ animation:bounceoff 3.6s ease-in-out infinite; }
-    @keyframes bounceoff{ 0%{ transform:translate(0,0); opacity:0;} 12%{ opacity:1;} 42%{ transform:translate(-52px,0); opacity:1;} 56%{ transform:translate(-34px,-12px);} 78%{ transform:translate(-54px,22px); opacity:0;} 100%{ transform:translate(0,0); opacity:0;} }
-    .go .spark{ animation:spark 3.6s ease-in-out infinite; }
-    @keyframes spark{ 0%,44%{ opacity:0; transform:scale(.4);} 50%{ opacity:1; transform:scale(1.1);} 60%,100%{ opacity:0; transform:scale(.6);} }
-
-    @media(prefers-reduced-motion:reduce){
-      *{ animation:none !important; }
-      html{ scroll-behavior:auto; }
-      .reveal{ opacity:1; transform:none; }
-      .caret{ opacity:1; }
-    }
-  </style>
+/* ---------- svg pieces ---------- */
+text{ font-family:"IBM Plex Mono",ui-monospace,monospace; fill:var(--ink); user-select:none }
+.zfloor{ fill:var(--paper2); fill-opacity:.55; stroke:var(--line); stroke-width:1.2; stroke-dasharray:5 4 }
+.zlab{ font-size:12.5px; font-weight:700; letter-spacing:.12em }
+.zsub{ font-size:9px; fill:var(--mut); letter-spacing:.04em }
+.node{ cursor:pointer }
+.node .ftop{ fill:var(--panel); stroke:var(--line); stroke-width:1.3 }
+.node .fl{ fill:url(#hatchA); stroke:var(--line); stroke-width:1.3 }
+.node .fr{ fill:url(#hatchB); stroke:var(--line); stroke-width:1.3 }
+.node.actor .ftop{ fill:var(--paper) }
+.node text.nl{ font-size:10.5px; font-weight:600; text-anchor:middle }
+.node text.nk{ font-size:7.5px; fill:var(--mut); text-anchor:middle }
+.node.sel .ftop{ fill:var(--ink) }
+.node.sel .badge{ fill:var(--paper) }
+.node:hover .ftop{ fill:#f6f2dc }
+.node.sel:hover .ftop{ fill:var(--ink) }
+.node .badge{ font-size:8px; font-weight:700; text-anchor:middle; pointer-events:none }
+.node.sel .nl{ fill:var(--red) }
+.edge{ fill:none; stroke-width:1.6; cursor:pointer }
+.edge.hit{ stroke:transparent; stroke-width:11 }
+.edge.aux{ stroke-dasharray:4 4 }
+.edge.hl{ stroke-width:3 }
+.dim{ opacity:.13 }
+.semi{ opacity:.45 }
+.gatelab{ font-size:9px; font-weight:700; fill:var(--amber); letter-spacing:.06em }
+.dot{ pointer-events:none }
+@media (max-width: 980px){
+  #side{ display:none }
+  #panel{ width:300px }
+}
+@media (max-width: 700px){
+  body{ overflow:auto }
+  main{ flex-direction:column }
+  #map{ min-height:52vh; flex:none }
+  #panel{ width:auto; border-left:0; border-top:1.5px solid var(--line) }
+  header{ flex-wrap:wrap }
+  header .cell{ border-bottom:1px solid var(--faint) }
+}
+@media (prefers-reduced-motion: reduce){ .dot{ display:none } }
+</style>
 </head>
 <body>
-  <div class="progress" id="progress"></div>
-  <button class="toggle" id="t" type="button">DARK</button>
 
-  <!-- HERO -->
-  <section class="hero">
-    <div class="win">
-      <div class="bar">
-        <span class="dot" style="background:var(--accent)"></span>
-        <span class="dot" style="background:var(--sun,#FFB84D)"></span>
-        <span class="dot" style="background:var(--good)"></span>
-        <span class="addr"><span class="host" id="host">quiz</span>.solhann.net<span class="caret"></span></span>
-      </div>
-      <div class="screen">
-        <svg viewBox="0 0 260 150" role="img" aria-label="A small website: a building under a sun.">
-          <circle cx="200" cy="46" r="16" class="fsun ln"/>
-          <g class="ln"><line x1="200" y1="18" x2="200" y2="24"/><line x1="226" y1="46" x2="232" y2="46"/><line x1="220" y1="27" x2="225" y2="22"/></g>
-          <rect x="40" y="52" width="66" height="74" class="fcoral ln"/>
-          <g class="lnt" stroke="var(--panel)">
-            <rect x="52" y="64" width="13" height="13" fill="none"/><rect x="81" y="64" width="13" height="13" fill="none"/>
-            <rect x="52" y="88" width="13" height="13" fill="none"/><rect x="81" y="88" width="13" height="13" fill="none"/>
-          </g>
-          <rect x="116" y="78" width="46" height="48" class="fbg ln"/>
-          <rect x="128" y="96" width="20" height="30" class="fpanel ln"/>
-          <line x1="26" y1="126" x2="234" y2="126" class="ln"/>
-        </svg>
-      </div>
-    </div>
-    <h1>How it works</h1>
-    <p class="lede">One rented server runs a handful of small web apps, each at its own address. This page is about two things: getting a change live in half a minute, and making sure no app can ever read its neighbour’s data.</p>
-    <div class="scrollcue">▼</div>
-  </section>
-
-  <!-- STATS -->
-  <div class="stats">
-    <div class="stat reveal"><b>~30s</b><span>from save to live</span></div>
-    <div class="stat reveal"><b>1</b><span>server, many apps</span></div>
-    <div class="stat reveal"><b>0</b><span>keys shared between apps</span></div>
+<header>
+  <div class="cell brand"><span class="k">solhann.net</span><span class="v">greenlight · architecture</span></div>
+  <div class="cell"><span class="k">github orgs</span><span class="v">2 — dev / prod</span></div>
+  <div class="cell"><span class="k">machines</span><span class="v">3 — laptop · preview · prod</span></div>
+  <div class="cell"><span class="k">human gates</span><span class="v">1 — the PR review</span></div>
+  <div class="cell opt"><span class="k">paths to prod</span><span class="v">3 — all named below</span></div>
+  <div class="cell opt"><span class="k">prod-write creds in dev org</span><span class="v">0</span></div>
+  <div class="cell spacer"></div>
+  <div class="btns">
+    <button class="btn primary" data-flow="build">▶ new app</button>
+    <button class="btn" data-flow="change">▶ change</button>
+    <button class="btn" data-flow="legacy">▶ legacy</button>
+    <button class="btn" data-flow="schema">▶ schema</button>
+    <button class="btn" id="resetBtn">reset</button>
   </div>
+</header>
 
-  <!-- 01 -->
-  <section>
-    <div class="reveal">
-      <div class="head"><span class="num">01</span><span class="kicker">THE SETUP</span></div>
-      <h2>One server, many front doors</h2>
-      <div class="panel">
-        <p class="body">Each app has its own address — <b>quiz.solhann.net</b>, <b>expenses.solhann.net</b> — and runs as if it owned the server. It doesn’t. Everything’s on one box. But an app can’t see the others, let alone reach into them.</p>
-        <p class="body">Spinning up a new app takes one command. After that, pushing your code is the only step you do by hand. The rest runs itself.</p>
-      </div>
+<main>
+  <aside id="side"></aside>
+  <div id="map">
+    <svg id="world" role="img" aria-label="Isometric map of the greenlight pipeline across the laptop, two GitHub orgs, the preview box and the prod box."></svg>
+    <div id="tracebar"><span class="tt"></span><span class="st"></span></div>
+    <div id="zoomui">
+      <button class="btn" id="zin">+</button>
+      <button class="btn" id="zout">−</button>
+      <button class="btn" id="zfit">⌂</button>
     </div>
-  </section>
-
-  <!-- 02 -->
-  <section>
-    <div class="reveal">
-      <div class="head"><span class="num">02</span><span class="kicker">SHIPPING</span></div>
-      <h2>From save to live in about thirty seconds</h2>
-      <p class="body">You edit a file and push it. That’s the last time a person is involved. A build kicks off, checks the change for anything obviously broken, copies the result onto the server, and the live site updates. Usually inside thirty seconds.</p>
-
-      <div class="panel stage" id="pipeStage">
-        <svg viewBox="0 0 500 150" width="100%" role="img" aria-label="A change moves along four stages: your computer, a check, the server, and the live website.">
-          <line x1="58" y1="118" x2="442" y2="118" class="ln" stroke-dasharray="2 12"/>
-
-          <!-- s1 idea -->
-          <g>
-            <rect x="28" y="14" width="60" height="64" rx="10" class="fpanel ln"/>
-            <circle cx="58" cy="38" r="12" class="fsun ln"/><path d="M52 47 h12 M53 52 h10" class="ln"/>
-            <g class="ln"><line x1="58" y1="20" x2="58" y2="15"/><line x1="43" y1="30" x2="39" y2="27"/><line x1="73" y1="30" x2="77" y2="27"/></g>
-            <circle class="led" data-i="0" cx="82" cy="20" r="4"/>
-          </g>
-          <text x="58" y="98" text-anchor="middle" class="tx">YOU</text>
-
-          <!-- s2 check -->
-          <g>
-            <rect x="156" y="14" width="60" height="64" rx="10" class="fpanel ln"/>
-            <rect x="174" y="26" width="22" height="28" rx="2" class="fbg ln"/>
-            <line x1="179" y1="33" x2="191" y2="33" class="lnt"/><line x1="179" y1="40" x2="191" y2="40" class="lnt"/>
-            <circle cx="196" cy="49" r="9" class="fgreen ln"/><line x1="203" y1="56" x2="209" y2="62" class="ln"/>
-            <circle class="led" data-i="1" cx="210" cy="20" r="4"/>
-          </g>
-          <text x="186" y="98" text-anchor="middle" class="tx">CHECK</text>
-
-          <!-- s3 server -->
-          <g>
-            <rect x="284" y="14" width="60" height="64" rx="10" class="fpanel ln"/>
-            <rect x="300" y="24" width="28" height="42" rx="3" class="fbg ln"/>
-            <rect x="305" y="30" width="18" height="8" rx="1.5" class="fpanel lnt"/>
-            <rect x="305" y="42" width="18" height="8" rx="1.5" class="fpanel lnt"/>
-            <rect x="305" y="54" width="18" height="8" rx="1.5" class="fpanel lnt"/>
-            <circle cx="309" cy="34" r="1.8" class="fgreen"/><circle cx="309" cy="46" r="1.8" class="fgreen"/><circle cx="309" cy="58" r="1.8" class="fsun"/>
-            <circle class="led" data-i="2" cx="338" cy="20" r="4"/>
-          </g>
-          <text x="314" y="98" text-anchor="middle" class="tx">SERVER</text>
-
-          <!-- s4 live -->
-          <g>
-            <rect x="412" y="14" width="60" height="64" rx="10" class="fpanel ln"/>
-            <circle cx="442" cy="46" r="15" class="fblue ln"/>
-            <path d="M427 46 h30 M442 31 v30 M431 36 q11 10 22 0 M431 56 q11 -10 22 0" class="lnt" stroke="var(--panel)"/>
-            <g class="check"><circle cx="464" cy="24" r="9" class="fgreen ln"/><path d="M459 24 l4 4 l6 -8" class="lnt" stroke="var(--panel)"/></g>
-            <circle class="led" data-i="3" cx="418" cy="20" r="4"/>
-          </g>
-          <text x="442" y="98" text-anchor="middle" class="tx">LIVE</text>
-
-          <!-- travelling parcel (positioned at start; group animated via WAAPI) -->
-          <g class="packet">
-            <rect x="46" y="106" width="26" height="24" rx="4" class="fcoral ln"/>
-            <line x1="46" y1="116" x2="72" y2="116" class="lnt" stroke="var(--panel)"/>
-            <line x1="59" y1="106" x2="59" y2="130" class="lnt" stroke="var(--panel)"/>
-          </g>
-        </svg>
-
-        <div class="runrow"><button class="run" id="runBtn" type="button">▶ WATCH IT SHIP</button></div>
-
-        <div class="pipe-cap">
-          <span><b>YOU CHANGE IT</b>on your own computer</span>
-          <span><b>IT’S CHECKED</b>mistakes caught before it ships</span>
-          <span><b>IT’S DELIVERED</b>to the shared server</span>
-          <span><b>IT’S LIVE</b>for everyone, in seconds</span>
-        </div>
-      </div>
-      <p class="aside">The thing doing the copying has almost no power on the server. Its login can write files into one folder and that’s it — no shell, nothing it can read back. If those credentials leaked tomorrow, the worst anyone could do is push a bad version of an app that already trusts them.</p>
-
-      <details class="uh">
-        <summary>UNDER THE HOOD</summary>
-        <div class="uhbody">
-          <p>The deploy credential is an SSH key with a forced command in <code>authorized_keys</code>: <code>command="rrsync /var/www/apps"</code>. Whoever holds it can run exactly one thing — <code>rsync</code>, scoped to that one folder. No shell, no other commands, even with the key in hand.</p>
-          <p>Data apps deliver their server-side code over a second channel, and each app has its <em>own</em> key here — pinned to <code>rrsync -wo</code> (write-only) and locked to that one app’s folder. It can drop new logic in but can’t read anything back, and it can’t touch another app. So a leaked key only ever affects the app it belongs to. The build and copy themselves run in GitHub Actions from one shared workflow.</p>
-          <p><a href="https://github.com/sol-apps/architecture" target="_blank" rel="noopener">Read this page’s source →</a></p>
-        </div>
-      </details>
+    <div id="maphint">
+      <span>hover to read · click to inspect · drag to pan · scroll to zoom</span>
+      <span class="lg"><i style="border-color:var(--olive)"></i>no credential</span>
+      <span class="lg"><i style="border-color:var(--blue)"></i>scoped / jailed credential</span>
+      <span class="lg"><i style="border-color:var(--red)"></i>prod-writing credential</span>
+      <span class="lg"><i style="border-color:var(--amber)"></i>human action</span>
+      <span class="lg"><i style="border-color:var(--mut); border-top-style:dashed"></i>legacy / admin lane</span>
     </div>
-  </section>
+  </div>
+  <aside id="panel"></aside>
+</main>
 
-  <!-- 03 -->
-  <section>
-    <div class="reveal">
-      <div class="head"><span class="num">03</span><span class="kicker">ISOLATION</span></div>
-      <h2>Every app in a locked room</h2>
-      <p class="body">The apps share a machine, but not an account. Each one runs as its own Linux user that owns a single folder. When an app asks for a file in another app’s folder, the operating system refuses — the same way your laptop stops one login from opening another’s files.</p>
-      <p class="body">That covers ordinary bugs. It also covers an app that’s actively hostile, because the design assumes any app might run code nobody vetted.</p>
+<div id="tip"></div>
 
-      <div class="panel stage" id="roomsStage">
-        <svg viewBox="0 0 480 210" width="100%" role="img" aria-label="Three separate locked rooms in one building; a hostile arrow is repelled at the wall.">
-          <rect x="10" y="20" width="460" height="178" rx="12" class="fbg ln"/>
-          <line x1="10" y1="54" x2="470" y2="54" class="ln"/>
-          <text x="240" y="43" text-anchor="middle" class="tx">THE SERVER — ONE COMPUTER</text>
+<script>
+"use strict";
+/* =====================================================================
+   The data model IS the architecture document. Every node and edge below
+   carries its own what / how / risk text; the map is generated from it.
+   ===================================================================== */
 
-          <!-- room 1 quiz -->
-          <g class="room" transform="translate(28,68)">
-            <rect x="0" y="0" width="130" height="114" rx="8" class="fpanel ln"/>
-            <rect x="43" y="14" width="44" height="44" rx="6" class="fbg ln"/>
-            <circle cx="54" cy="25" r="3.5" class="fcoral"/><circle cx="76" cy="25" r="3.5" class="fcoral"/>
-            <circle cx="65" cy="36" r="3.5" class="fcoral"/><circle cx="54" cy="47" r="3.5" class="fcoral"/><circle cx="76" cy="47" r="3.5" class="fcoral"/>
-            <text x="65" y="76" text-anchor="middle" class="tx">QUIZ</text>
-            <rect x="52" y="80" width="26" height="34" rx="3" class="fbg ln"/>
-            <g transform="translate(65,95)"><g class="rlock1">
-              <rect x="-6" y="-1" width="12" height="9" rx="2" class="fsun ln"/><path d="M-3 -1 v-3 a3 3 0 0 1 6 0 v3" class="lnt"/><circle cx="0" cy="3.5" r="1.4" class="fbg"/>
-            </g></g>
-          </g>
-          <!-- room 2 expenses -->
-          <g class="room" transform="translate(175,68)">
-            <rect x="0" y="0" width="130" height="114" rx="8" class="fpanel ln"/>
-            <rect x="39" y="18" width="52" height="34" rx="4" class="fgreen ln"/>
-            <circle cx="65" cy="35" r="8" class="fbg ln"/><text x="65" y="39" text-anchor="middle" class="tx">$</text>
-            <text x="65" y="76" text-anchor="middle" class="tx">EXPENSES</text>
-            <rect x="52" y="80" width="26" height="34" rx="3" class="fbg ln"/>
-            <g transform="translate(65,95)"><g class="rlock2">
-              <rect x="-6" y="-1" width="12" height="9" rx="2" class="fsun ln"/><path d="M-3 -1 v-3 a3 3 0 0 1 6 0 v3" class="lnt"/><circle cx="0" cy="3.5" r="1.4" class="fbg"/>
-            </g></g>
-          </g>
-          <!-- room 3 gallery -->
-          <g class="room" transform="translate(322,68)">
-            <rect x="0" y="0" width="130" height="114" rx="8" class="fpanel ln"/>
-            <rect x="41" y="14" width="48" height="40" rx="3" class="fbg ln"/>
-            <circle cx="53" cy="26" r="4" class="fsun"/>
-            <path d="M44 52 l11 -15 l8 9 l6 -7 l17 13 z" class="fblue ln" stroke-width="2"/>
-            <text x="65" y="76" text-anchor="middle" class="tx">GALLERY</text>
-            <rect x="52" y="80" width="26" height="34" rx="3" class="fbg ln"/>
-            <g transform="translate(65,95)"><g class="rlock3">
-              <rect x="-6" y="-1" width="12" height="9" rx="2" class="fsun ln"/><path d="M-3 -1 v-3 a3 3 0 0 1 6 0 v3" class="lnt"/><circle cx="0" cy="3.5" r="1.4" class="fbg"/>
-            </g></g>
-          </g>
+const ZONES = [
+  { id:"people",  label:"PEOPLE", sub:"three roles, one of them is the gate",
+    u0:-17.6, v0:3.0, u1:-10.2, v1:12.4 },
+  { id:"sandbox", label:"AGENT SANDBOX", sub:"Anthropic-hosted, ephemeral",
+    u0:-6.6, v0:-0.6, u1:1.0, v1:4.2 },
+  { id:"forge",   label:"GITHUB · SOL-FORGE", sub:"dev org — everything here is presumed unreviewed",
+    u0:2.8, v0:-0.6, u1:15.9, v1:9.6 },
+  { id:"preview", label:"PREVIEW BOX", sub:"greenlightdev.solhann.net — holds nothing worth stealing",
+    u0:10.2, v0:11.6, u1:15.9, v1:16.0 },
+  { id:"apps",    label:"GITHUB · SOL-APPS", sub:"prod org — main HEAD is the promotion record",
+    u0:2.8, v0:18.0, u1:15.9, v1:27.2 },
+  { id:"prod",    label:"PROD BOX", sub:"solhann.net — one server, every app in its own jail",
+    u0:-9.4, v0:7.6, u1:1.6, v1:27.2 },
+  { id:"laptop",  label:"YOUR LAPTOP", sub:"control plane + the only human lanes into prod",
+    u0:-17.6, v0:19.6, u1:-10.2, v1:28.8 },
+];
 
-          <!-- hostile arrow repelled at the right wall -->
-          <g transform="translate(452,150)"><g class="intruder">
-            <path d="M22 0 h-20 M8 -5 l-6 5 l6 5" class="ln" stroke="var(--accent)"/>
-          </g></g>
-          <g transform="translate(456,150)"><g class="spark">
-            <path d="M0 -7 l2.6 4.4 l5.4 -1.8 l-3.6 4.4 l3.6 4.4 l-5.4 -1.8 l-2.6 4.4 l-2.6 -4.4 l-5.4 1.8 l3.6 -4.4 l-3.6 -4.4 l5.4 1.8 z" class="fcoral ln" stroke-width="1.5"/>
-          </g></g>
-        </svg>
-      </div>
+const NODES = [
+  /* ---- people ---- */
+  { id:"builder", zone:"people", u:-15.4, v:5.2, w:1.2, d:1.2, h:1.5, kind:"actor", label:"BUILDER", badge:"B",
+    what:"Anyone allowed onto greenlight who wants an app to exist. They describe it in the build wizard, answer the agent's questions, and wait. They never touch git, GitHub, or a server.",
+    how:"A logged-in browser session on greenlight.solhann.net (PocketBase auth, token in localStorage). The wizard is <code>build.html</code>; a change to an existing app starts from the app's overlay on the shelf, which opens <code>build.html?change=&lt;slug&gt;</code>.",
+    risk:"A malicious builder can burn agent-session money and produce a hostile draft — but every output lands in sol-forge behind the review gate, and drafts are previewed on a box with nothing on it. A builder cannot reach prod." },
+  { id:"reviewer", zone:"people", u:-12.4, v:8.2, w:1.4, d:1.4, h:2.2, kind:"actor", label:"REVIEWER", badge:"☑",
+    what:"<span class='markr'>The only gate in the system.</span> Reads the PR, tries the running preview, and approves on GitHub. Approving is not a step before a deploy — merging IS deploying. Nobody gets a second look between the merge and production.",
+    how:"Branch protection on every sol-forge app repo: one approving review, <code>enforce_admins</code> on, and the required <code>greenlight-lint</code> check where <code>lint.yml</code> exists. The bot cannot approve its own PR.",
+    risk:"The reviewer's GitHub account is the most valuable credential anywhere in this system — more than any token. If it is compromised, the gate is gone. Everything else is built so that this is the ONLY thing that has to stay true." },
+  { id:"visitor", zone:"people", u:-15.4, v:10.6, w:1.2, d:1.2, h:1.2, kind:"actor", label:"VISITOR", badge:"V",
+    what:"Anyone using a finished app at <code>&lt;slug&gt;.solhann.net</code>.",
+    how:"Plain HTTPS to Caddy on the prod box, which routes the subdomain to that app's static folder and (for data apps) its PocketBase instance.",
+    risk:"Visitors only ever see published apps. Per-record API rules scope what a logged-in visitor can read; the jail scopes what a hostile app could do with their data." },
 
-      <div class="cards">
-        <div class="card"><h3>ITS OWN KEY</h3><p>No shared master key. One app reaching for another’s files gets stopped by the kernel itself, not by a policy we’re trusting to hold.</p></div>
-        <div class="card"><h3>ITS OWN LIMITS</h3><p>Every app has a hard cap on memory and CPU. A runaway one slows itself down and leaves the rest of the box alone.</p></div>
-      </div>
+  /* ---- agent sandbox ---- */
+  { id:"agent", zone:"sandbox", u:-2.8, v:1.8, w:1.9, d:1.6, h:1.9, label:"MANAGED AGENT", badge:"AI",
+    what:"An Anthropic managed-agent session, started by greenlight's server hooks. It scaffolds from the app template (or clones the existing app for a change), writes the code, pushes a branch, and opens the pull request.",
+    how:"Its system prompt tells it the truth about the pipeline: a human has to approve the PR, and approving it puts it live. For a change request, spec.json updates travel in the same PR as the code.",
+    risk:"The sandbox holds the bot's PAT for the length of a session. That PAT has Contents + Pull-requests on sol-forge only — no Workflows permission, so even a fully hijacked agent cannot edit the workflow files that read the dispatch secrets, cannot approve its own PR, and holds nothing that writes to sol-apps or prod." },
 
-      <details class="uh">
-        <summary>UNDER THE HOOD</summary>
-        <div class="uhbody">
-          <p>Each app is a <code>systemd</code> service running as a dedicated user (<code>pb-&lt;app&gt;</code>), with its data folder at mode <code>750</code> — unreadable to any other user.</p>
-          <p>The service is sandboxed: <code>ProtectSystem=strict</code> with <code>ReadWritePaths=</code> set to just that folder, an empty <code>CapabilityBoundingSet=</code> (no root powers at all), <code>SystemCallFilter=@system-service</code>, and <code>MemoryDenyWriteExecute=yes</code>. Resource caps are <code>MemoryMax=256M</code>, <code>CPUQuota=50%</code>, <code>TasksMax=64</code>.</p>
-          <p>So even code running flat-out inside an app can’t step outside its folder or starve the machine. Full list of these knobs: <a href="https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html" target="_blank" rel="noopener">systemd sandboxing options →</a></p>
-        </div>
-      </details>
+  /* ---- sol-forge ---- */
+  { id:"forge-repo", zone:"forge", u:5.8, v:4.6, w:2.2, d:1.9, h:2.2, label:"APP REPO ‹slug›", badge:"PR",
+    what:"The agent's workspace: one repo per app, and the repo name is the slug is the subdomain. All work arrives as pull-request branches; main only moves when a human merges.",
+    how:"Created by greenlight's hooks from the app template, then branch-protected. Carries <code>spec.json</code> (the app's contract, tier included) and four owner-guarded workflows copied from the template.",
+    risk:"Two independent guards keep an unreviewed app off prod, both born from a real incident where generating a repo promoted a bare scaffold: the template's promote.yml skips the push that CREATES main (<code>!github.event.created</code>), and the promoter refuses any repo with no spec.json." },
+  { id:"app-template", zone:"forge", u:10.4, v:1.6, w:1.7, d:1.4, h:1.2, label:"APP-TEMPLATE", badge:"T",
+    what:"What every forge repo starts from: index.html, spec.json, and four workflows — deploy, lint, preview, promote.",
+    how:"Each workflow is owner-guarded (<code>if: github.repository_owner == …</code>) so the copies that travel to sol-apps at promotion are inert there, and vice versa.",
+    risk:"Template bugs replicate into every new app. The ref-creation guard lives here — deleting it would re-open the promote-before-review hole, which is why the workflow comment documents the incident." },
+  { id:"bot", zone:"forge", u:13.4, v:3.6, w:1.5, d:1.3, h:1.4, label:"SOL-SANDBOX-PUSHER", badge:"🤖",
+    what:"The GitHub account the agent works as. It pushes branches and opens PRs; that is all it can do.",
+    how:"A machine account with push access to sol-forge app repos. Its PAT (held in the agent sandbox) has Contents + Pull-requests, not Workflows.",
+    risk:"It cannot approve pull requests — its own or anyone's — so it cannot walk through the gate it creates work for. Verified empirically, not assumed from settings." },
+  { id:"dispatch-tokens", zone:"forge", u:10.6, v:7.0, w:1.9, d:1.4, h:1.1, label:"DISPATCH TOKENS", badge:"⚿",
+    what:"The two deliberate exceptions to \"nothing in sol-forge points at sol-apps\": PROMOTER_DISPATCH_TOKEN and PREVIEWER_DISPATCH_TOKEN.",
+    how:"Fine-grained PATs scoped to exactly one private repo each, with <code>actions: write</code> only. All they can do is press a start button.",
+    risk:"Safe to reference from public workflow files because the agent's PAT lacks the Workflows permission — it cannot author or edit the file that reads them. Worst case if leaked: someone starts a promoter run, which then does all of its own checking anyway." },
+
+  /* ---- preview box ---- */
+  { id:"preview-box", zone:"preview", u:13.0, v:13.8, w:2.1, d:1.6, h:1.6, label:"PREVIEW SERVER", badge:"👁",
+    what:"Serves every open sol-forge PR at greenlightdev.solhann.net so a reviewer can USE an app before approving it. Reading 200 lines of HTML says the code matches the spec; it doesn't say the thing works.",
+    how:"PR events dispatch the previewer repo, which SSHes here with a key forced to <code>preview-sync</code>. The box clones the exact commit anonymously and serves it as static files, with <code>.git</code>, <code>.github</code>, <code>pb_hooks</code>, <code>pb_migrations</code> stripped — the same exclusions prod uses. Closed or merged PRs are torn down by the same dispatch.",
+    risk:"This machine runs code no human has approved yet — that is its job — so it is built to be worthless to compromise rather than built like a small prod: no credentials on the box, no root (systemd --user), nothing is ever executed (static files only), and it is a different machine from prod entirely." },
+
+  /* ---- sol-apps ---- */
+  { id:"promoter", zone:"apps", u:5.6, v:20.2, w:2.2, d:1.9, h:2.6, label:"PROMOTER", badge:"⇥",
+    what:"<span class='mark'>The only pipeline path from forge to prod.</span> Validates the slug, clones the forge repo anonymously, refuses any repo without spec.json, then pushes fast-forward-only into sol-apps. On an app's first promotion it also creates the prod repo, provisions the PocketBase jail over SSH, installs the per-app deploy key, and protects main.",
+    how:"A private repo, because it holds the powerful secrets. Every step is a plain <code>run:</code> script — no marketplace actions, so no third-party code ever touches these tokens.",
+    risk:"Fast-forward-only is the tripwire: a non-FF push means someone pushed sol-apps main directly, and the correct response is to alert — never retry, never force. The blast radius of this repo is the blast radius of PROMOTE_PUSH_TOKEN, which is why nothing else lives beside it." },
+  { id:"prod-repo", zone:"apps", u:9.4, v:23.6, w:2.1, d:1.8, h:1.9, label:"APP REPO ‹slug›", badge:"✓",
+    what:"The deployed record. The HEAD of main IS the statement of what has been promoted — there is no separate deploy log to drift out of sync.",
+    how:"Written only by the promoter (pipeline apps) or by the owner's direct push (legacy apps). Any push to main triggers deploy.yml, which is a ten-line caller of the shared reusable workflow.",
+    risk:"Public repo, so no secrets in code — secrets live in org/repo secret stores. The GITHUB_TOKEN caveat matters here: pushes made with the default token would NOT trigger deploys, so the promoter pushes with a PAT on purpose." },
+  { id:"workflows-repo", zone:"apps", u:13.2, v:20.8, w:2.0, d:1.6, h:1.6, label:"WORKFLOWS (reusable)", badge:"⚙",
+    what:"The one shared deploy pipeline every app calls. Editing this file changes deploy behaviour for every app on its next push.",
+    how:"Checks out, cache-busts asset URLs, then rsyncs over two separate jailed lanes: the public site to <code>/var/www/apps/&lt;slug&gt;</code>, and (for data apps) <code>pb_hooks</code> + <code>pb_migrations</code> to the instance dir.",
+    risk:"Host keys are pinned via secrets — never <code>ssh-keyscan</code>, which would trust whoever answers. Both SSH identities are forced commands on prod; neither can open a shell or read anything back." },
+  { id:"previewer-repo", zone:"apps", u:13.6, v:25.0, w:1.9, d:1.5, h:1.3, label:"PREVIEWER", badge:"▷",
+    what:"Receives PR dispatches from forge and drives the preview box: <code>&lt;slug&gt; &lt;pr&gt; &lt;sha&gt; up|down</code>.",
+    how:"Same pattern as the promoter on purpose: an event in a public repo fires a dispatch at a private repo that holds the only credential.",
+    risk:"Kept SEPARATE from the promoter because a repo's blast radius is set by its most powerful secret. PREVIEW_SSH_KEY is near-worthless — jailed to preview-sync on a box with nothing on it — and putting it beside prod-write tokens would raise it to their risk level and falsify the promoter's \"only path to prod\" claim." },
+
+  /* ---- prod box ---- */
+  { id:"caddy", zone:"prod", u:-7.6, v:11.2, w:1.7, d:1.4, h:1.5, label:"CADDY", badge:"⇆",
+    what:"TLS termination and the front door: routes <code>&lt;slug&gt;.solhann.net</code> to that app's static folder, and <code>/api/*</code> of data apps to their loopback PocketBase port.",
+    how:"One Caddy instance, per-app route blocks written by provision-app. PocketBase instances bind 127.0.0.1 only — nothing reaches them except through here.",
+    risk:"The only process listening on the public internet. Everything behind it assumes Caddy is the sole entry point, which is enforced by the loopback binding, not by policy." },
+  { id:"greenlight-app", zone:"prod", u:-1.8, v:9.6, w:2.2, d:1.7, h:2.4, label:"GREENLIGHT", badge:"GL",
+    what:"The control panel itself: shelf, build wizard, review board. Its server hooks (six routes under <code>/api/build/*</code>) run the whole show — start agent sessions, create and protect forge repos, stream progress back to the builder.",
+    how:"Deliberately just another jailed PocketBase app on this box — same systemd sandbox, same deploy lanes, no special access. All of its power is borrowed from tokens pushed into its environment.",
+    risk:"This is the loop in the diagram: the thing that builds apps is an app on the box it deploys to. Its strongest token (FORGE_ADMIN_TOKEN) writes only to sol-forge — a full compromise of greenlight can spam the dev org and burn agent money, but cannot push to sol-apps, cannot approve a PR, and cannot touch prod outside its own jail." },
+  { id:"static-files", zone:"prod", u:-7.0, v:16.4, w:1.9, d:1.5, h:1.2, label:"/var/www/apps", badge:"▤",
+    what:"Every app's public site, one folder per slug. What Caddy serves.",
+    how:"Written only through the deploy jail: an SSH key forced to <code>rrsync /var/www/apps</code> — one command, one directory, no shell.",
+    risk:"A leaked deploy key can push a bad version of an app that already trusts it, and nothing else: it cannot read files back, and it cannot leave the folder." },
+  { id:"pb-jails", zone:"prod", u:-2.6, v:16.0, w:2.2, d:1.7, h:1.9, label:"POCKETBASE JAILS", badge:"▣",
+    what:"One PocketBase instance per data app, each in its own locked room. An app asking for another app's files is refused by the kernel, not by a policy.",
+    how:"Per-app unix user <code>pb-&lt;slug&gt;</code>, data at mode 750, systemd sandbox: <code>ProtectSystem=strict</code>, empty capability set, <code>MemoryMax=256M</code>, <code>CPUQuota=50%</code>. Server-side code arrives through a per-app write-only lane (<code>pb-deploy-jail &lt;slug&gt;</code>) pinned to that app's dir.",
+    risk:"The design assumes any app might run code nobody vetted — that is the point of the pipeline feeding it. A hostile app is contained to its own folder, its own database, and its own resource caps." },
+  { id:"superuser-files", zone:"prod", u:-7.4, v:21.0, w:1.9, d:1.4, h:1.1, label:"/etc/pocketbase/*.superuser", badge:"🔑",
+    what:"Per-app PocketBase superuser passwords. Generated ON PROD, kept on prod, and nowhere else.",
+    how:"<code>openssl rand</code> at provision time, root:root 0600, re-applied with <code>superuser upsert</code> on EVERY provision run — so a drifted password self-heals.",
+    risk:"Nothing reads these back off the box and no lane may ever be added that does. A copy anywhere else would be a second, staler, more exposed version of a live prod credential. Tools that need superuser auth run on prod instead." },
+  { id:"provision-app", zone:"prod", u:-2.8, v:22.2, w:2.1, d:1.7, h:1.7, label:"PROVISION-APP", badge:"⛭",
+    what:"Creates or repairs an app's jail: unix user, systemd unit, Caddy route, superuser password, deploy-key install. Idempotent — safe to re-run forever.",
+    how:"Root-owned script with SSH forced-command entry points: the laptop's key forces <code>--ssh</code>; the promoter's key forces <code>--ssh-provision-only</code>, a narrower mode that additionally refuses <code>--push-env</code> (which rewrites a live app's runtime secrets and takes the slug from the caller).",
+    risk:"The forced commands are the jail. Neither SSH identity gets a shell, and the promoter's lane cannot touch runtime secrets even if the promoter is compromised. Root work (editing this script, bootstrap) happens only through the owner's interactive sudo lane." },
+  { id:"pb-migrate", zone:"prod", u:0.2, v:13.0, w:1.7, d:1.4, h:1.3, label:"PB-MIGRATE", badge:"⟳",
+    what:"Applies schema changes safely: stop the app, snapshot the data, apply migrations one at a time, quarantine any failure, health-check, carry on.",
+    how:"A systemd path watcher per app. Backups go to <code>/var/backups</code> (last ten kept); a failed migration moves to <code>pb_migrations_failed/</code> so the app recovers on its previous schema instead of crash-looping.",
+    risk:"Schema is migrations-only: files written by the local pb-dev workbench, committed, and shipped through the same reviewed pipeline as code. Nobody edits live schema by hand — not via the dashboard, not via the API." },
+
+  /* ---- laptop ---- */
+  { id:"platform-cli", zone:"laptop", u:-15.4, v:21.4, w:1.9, d:1.5, h:1.6, label:"PLATFORM CLI", badge:"$",
+    what:"The control plane: <code>create-app</code>, <code>pb-provision</code>, <code>pb-backups</code>, <code>greenlight-backfill</code>. Also the legacy lane — pre-greenlight apps are edited here and pushed straight to sol-apps.",
+    how:"Bash scripts in the private platform repo. <code>greenlight-backfill &lt;slug&gt;</code> is what makes a mirrored legacy app editable through the pipeline.",
+    risk:"The legacy direct-push lane bypasses the review gate by definition — acceptable only because it is the owner, on their own machine, editing apps that predate the pipeline. Every new app goes through greenlight." },
+  { id:"pb-dev", zone:"laptop", u:-11.9, v:22.8, w:1.7, d:1.4, h:1.3, label:"PB-DEV", badge:"⌂",
+    what:"A throwaway local PocketBase where all schema editing happens. Its dashboard writes <code>pb_migrations/</code> files, which are committed like any other code.",
+    how:"<code>platform/bin/pb-dev</code> from the app checkout, dashboard on 127.0.0.1. The generated migration files are the ONLY way schema reaches prod.",
+    risk:"Rehearse on a copy, ship the recording. Prod never sees an experimental schema edit — it sees a migration that already ran once, applied behind a fresh backup." },
+  { id:"pb-secret-store", zone:"laptop", u:-15.6, v:25.2, w:1.9, d:1.4, h:1.2, label:"PB-SECRET STORE", badge:"⚿",
+    what:"Only what prod must NOT generate for itself: greenlight's API + forge tokens, per-app runtime hook secrets, S3 backup credentials, local pb-dev passwords.",
+    how:"<code>~/.config/solhann/pb-secrets</code>, dir 700 / file 600, never in any repo. Runtime secrets reach an app via <code>pb-provision &lt;slug&gt; --push-env</code>.",
+    risk:"Superuser passwords were deliberately evicted from here — prod owns those now. Bare <code>&lt;slug&gt;</code> entries are leftovers, removed with <code>pb-secret rm</code> only after that app has been re-provisioned (before that, they are the only copy)." },
+  { id:"ssh-lanes", zone:"laptop", u:-12.0, v:26.6, w:1.8, d:1.5, h:1.5, label:"SSH LANES", badge:"⇶",
+    what:"Three lanes to prod, most-jailed first: <code>pb-provision</code> (forced command, not a shell) · the promoter's CI key (provision-only, refuses --push-env) · <code>ssh prod</code> (interactive shell as sol).",
+    how:"Root login is disabled, but root ACCESS is not: <code>ssh -t prod 'sudo …'</code> works with a password only the owner can type. That is how bootstrap and /usr/local/bin work gets done.",
+    risk:"The write-only property holds across all three lanes: none of them can read a superuser password back off the box. The sudo lane is the one honest superpower in the system, and it is gated on a human at this keyboard." },
+];
+
+const CRED_COLORS = { none:"var(--olive)", scoped:"var(--blue)", prodwrite:"var(--red)", human:"var(--amber)" };
+const CRED_LABEL = {
+  none:"no credential (anonymous / local)",
+  scoped:"scoped or jailed credential",
+  prodwrite:"prod-writing credential",
+  human:"human action",
+};
+
+const EDGES = [
+  { id:"e_build_start", from:"builder", to:"greenlight-app", cls:"human",
+    label:"describe / answer", carries:"the idea, interview answers",
+    cred:"Logged-in PocketBase session over HTTPS",
+    note:"The builder talks to the wizard; greenlight's hooks stream agent progress back over SSE. Nothing the builder types goes anywhere but sol-forge, behind the gate." },
+  { id:"e_pushenv", from:"pb-secret-store", to:"greenlight-app", cls:"scoped", aux:true,
+    label:"--push-env", carries:"runtime secrets (API + forge tokens)",
+    cred:"pb-provision --push-env over the jailed laptop SSH lane",
+    note:"How greenlight gets its power: tokens are pushed into its jailed environment from the laptop's secret store. The promoter's narrower SSH lane refuses this flag entirely." },
+  { id:"e_gl_agent", from:"greenlight-app", to:"agent", cls:"scoped",
+    label:"start session", carries:"spec + kickoff instructions",
+    cred:"Anthropic API key (in greenlight's env)",
+    note:"Greenlight starts a managed-agent session and relays the interview. The kickoff tells the agent the merge ships — no false comfort about later checkpoints." },
+  { id:"e_gl_forge", from:"greenlight-app", to:"forge-repo", cls:"scoped",
+    label:"create repo · protect main", carries:"repo from template, branch protection",
+    cred:"FORGE_ADMIN_TOKEN — writes to sol-forge ONLY",
+    note:"Slug availability is checked anonymously against sol-apps first (a private prod repo looks free to anonymous eyes, so a RESERVED list floors the private names). Greenlight holds nothing that writes to sol-apps." },
+  { id:"e_agent_forge", from:"agent", to:"forge-repo", cls:"scoped",
+    label:"push branch · open PR", carries:"the app's code",
+    cred:"Bot PAT: Contents + Pull-requests, NO Workflows permission",
+    note:"The missing Workflows permission is load-bearing three times over: the agent cannot edit the workflows that read dispatch secrets, cannot smuggle a new workflow into prod via promotion, and the bot cannot approve its own PR." },
+  { id:"e_forge_previewer", from:"forge-repo", to:"previewer-repo", cls:"scoped",
+    label:"PR event → dispatch", carries:"slug, PR number, commit sha",
+    cred:"PREVIEWER_DISPATCH_TOKEN — one repo, actions:write only",
+    note:"Opened, updated and closed PRs all fire the same dispatch, so previews appear, update and tear down with no accumulation." },
+  { id:"e_previewer_box", from:"previewer-repo", to:"preview-box", cls:"scoped",
+    label:"up / down", carries:"‹slug› ‹pr› ‹sha› up|down",
+    cred:"PREVIEW_SSH_KEY, forced to preview-sync — cannot get a shell",
+    note:"The only credential in the preview system, and it is jailed to a box that holds nothing. Host key pinned, never scanned." },
+  { id:"e_forge_box", from:"forge-repo", to:"preview-box", cls:"none",
+    label:"anonymous clone", carries:"the PR's exact commit",
+    cred:"None — public repo, anonymous git",
+    note:"The box pulls; nothing pushes to it. It clones the commit, strips .git/.github/pb_hooks/pb_migrations, and serves static files only." },
+  { id:"e_rev_box", from:"reviewer", to:"preview-box", cls:"human",
+    label:"try the app", carries:"clicks",
+    cred:"None — the preview is public-ish by design",
+    note:"The reviewer uses the actual running thing at greenlightdev.solhann.net before deciding. The diff says what changed; the preview says whether it works." },
+  { id:"e_rev_gate", from:"reviewer", to:"forge-repo", cls:"human", gate:true,
+    label:"APPROVE + MERGE — THE GATE", carries:"the one human decision",
+    cred:"The reviewer's own GitHub account",
+    note:"One approving review, enforce_admins, bot cannot self-approve. This click is the deploy: after it, promotion and deployment are automatic and nobody looks again." },
+  { id:"e_forge_promoter", from:"forge-repo", to:"promoter", cls:"scoped",
+    label:"merge → dispatch", carries:"slug (validated again on arrival)",
+    cred:"PROMOTER_DISPATCH_TOKEN — one repo, actions:write only",
+    note:"promote.yml is owner-guarded and skips the push that creates main — template generation once fired this pre-review and promoted a bare scaffold. The guard and the incident are documented in the workflow itself." },
+  { id:"e_promoter_forge", from:"promoter", to:"forge-repo", cls:"none",
+    label:"anonymous clone", carries:"the merged main",
+    cred:"None — anonymous git",
+    note:"The promoter trusts nothing from the dispatch payload beyond the slug, which it re-validates. Then the second scaffold guard: any repo with no spec.json is refused outright." },
+  { id:"e_promoter_prov", from:"promoter", to:"provision-app", cls:"scoped",
+    label:"first promotion: provision", carries:"slug",
+    cred:"CI SSH key forced to provision-app --ssh-provision-only",
+    note:"Creates the jail, generates the superuser on-box, installs the per-app deploy key. The forced mode refuses --push-env, so this lane can never rewrite a live app's runtime secrets." },
+  { id:"e_promoter_prodrepo", from:"promoter", to:"prod-repo", cls:"prodwrite",
+    label:"fast-forward-only push", carries:"the reviewed commit, unchanged",
+    cred:"PROMOTE_PUSH_TOKEN — Contents + Workflows RW on sol-apps",
+    note:"The single most powerful token in the pipeline, held only in the private promoter, used only after the human gate. FF-only via an explicit merge-base check: a non-FF means someone pushed prod directly — alert, never retry, never force." },
+  { id:"e_prodrepo_wf", from:"prod-repo", to:"workflows-repo", cls:"none",
+    label:"deploy.yml → reusable", carries:"the checkout",
+    cred:"GitHub-internal (secrets: inherit at run time)",
+    note:"Every app's deploy.yml is a ten-line caller. The promoter pushes with a PAT precisely so this trigger fires — pushes made with the default GITHUB_TOKEN start no workflows." },
+  { id:"e_wf_static", from:"workflows-repo", to:"static-files", cls:"scoped",
+    label:"rsync public site", carries:"static files (README, .git, pb_hooks excluded)",
+    cred:"SERVER_SSH_KEY, forced to rrsync /var/www/apps",
+    note:"One command, one directory. A leaked key can push a bad version of an app; it cannot read anything back or leave the folder." },
+  { id:"e_wf_hooks", from:"workflows-repo", to:"pb-jails", cls:"scoped",
+    label:"rsync hooks + migrations", carries:"pb_hooks/ + pb_migrations/",
+    cred:"Per-app PB_HOOKS_SSH_KEY, forced to pb-deploy-jail ‹slug›, write-only",
+    note:"Each data app has its OWN key pinned to its own dir — a hostile app's key can only overwrite its own server-side code, never a neighbour's. Write-only: it can add behaviour but never read stored data, so shipped code can't quietly exfiltrate the database." },
+  { id:"e_migrate", from:"pb-migrate", to:"pb-jails", cls:"none",
+    label:"snapshot → apply → health", carries:"schema changes",
+    cred:"Local to the box (root-owned watcher)",
+    note:"Backup before every touch, one migration at a time, failures quarantined so the app recovers on its previous schema. A change gone wrong is a restore away, not a disaster." },
+  { id:"e_visit", from:"visitor", to:"caddy", cls:"none",
+    label:"HTTPS", carries:"requests to ‹slug›.solhann.net",
+    cred:"None (per-app auth happens inside PocketBase rules)",
+    note:"Caddy is the only public listener; each request is routed to one app's folder or loopback port." },
+  { id:"e_caddy_static", from:"caddy", to:"static-files", cls:"none", thin:true,
+    label:"serve files", carries:"the public site", cred:"Local read",
+    note:"Static content is read straight from the app's folder." },
+  { id:"e_caddy_pb", from:"caddy", to:"pb-jails", cls:"none", thin:true,
+    label:"proxy /api", carries:"API traffic", cred:"Loopback proxy",
+    note:"Data apps' API traffic is proxied to 127.0.0.1:‹port›. Instances are unreachable except through here." },
+  { id:"e_legacy_push", from:"platform-cli", to:"prod-repo", cls:"human", aux:true,
+    label:"legacy lane: direct push", carries:"pre-greenlight app code",
+    cred:"The owner's own GitHub account",
+    note:"How apps shipped before greenlight, and still how pre-pipeline apps are edited: local change, git push to sol-apps, deploy fires. No review gate — accepted because it is the owner by hand. New apps do not get this lane." },
+  { id:"e_schema", from:"pb-dev", to:"prod-repo", cls:"human", aux:true,
+    label:"commit pb_migrations", carries:"recorded schema changes",
+    cred:"Owner push (legacy apps) or the full pipeline (greenlight apps)",
+    note:"Schema edits are rehearsed locally, recorded as migration files, and shipped like code. Never edited on prod — not in the dashboard, not over the API." },
+  { id:"e_provision_lane", from:"platform-cli", to:"provision-app", cls:"scoped", aux:true,
+    label:"pb-provision (jailed)", carries:"provision / repair / deploy-key / push-env",
+    cred:"Laptop SSH key forced to provision-app --ssh",
+    note:"Not a shell. authorized_keys forces the command; the flag set is the entire attack surface of this lane." },
+  { id:"e_sudo", from:"ssh-lanes", to:"provision-app", cls:"human", aux:true,
+    label:"ssh -t prod 'sudo …'", carries:"root-level maintenance",
+    cred:"Interactive shell as sol + sudo password (root login itself disabled)",
+    note:"The one honest superpower: bootstrap, /usr/local/bin edits, break-glass. Gated on a password only the owner can type." },
+  { id:"e_super", from:"provision-app", to:"superuser-files", cls:"none", thin:true,
+    label:"generate + upsert", carries:"superuser password (never leaves the box)",
+    cred:"Root, locally",
+    note:"Generated on prod, re-applied every run, readable by root only. No SSH lane can read it back, and none may be added that does." },
+];
+
+const FLOWS = {
+  build: {
+    title:"NEW APP — greenlight, end to end",
+    intro:"The full governed path, exactly as verified live with <code>dice-roller</code>: idea → agent → human gate → live at ‹slug›.solhann.net, with no manual deploy step anywhere.",
+    steps:[
+      ["e_build_start","A builder opens the wizard and describes the app; the agent interviews them through greenlight's hooks."],
+      ["e_gl_forge","Greenlight checks the slug (anonymously, against prod) and creates sol-forge/‹slug› from the template, branch-protected from birth."],
+      ["e_gl_agent","Greenlight starts a managed-agent session with the spec and a kickoff that says: the merge ships."],
+      ["e_agent_forge","The agent writes the app and opens a pull request as the bot. It cannot merge it, approve it, or touch workflows."],
+      ["e_forge_previewer","The PR event dispatches the previewer — a start button and nothing more."],
+      ["e_previewer_box","The previewer tells the preview box to bring this PR up."],
+      ["e_forge_box","The box clones the exact commit anonymously and serves it as static files. No secrets, no execution."],
+      ["e_rev_box","The reviewer tries the running app at greenlightdev.solhann.net."],
+      ["e_rev_gate","THE GATE. One human approves and merges. This click IS the deploy — everything after it is automatic."],
+      ["e_forge_promoter","The merge fires promote.yml, which dispatches the private promoter. (The push that CREATES main is skipped — that guard exists because of a real incident.)"],
+      ["e_promoter_forge","The promoter clones forge anonymously and refuses anything without spec.json — the second scaffold guard."],
+      ["e_promoter_prov","First promotion only: the jail is provisioned over the write-only SSH lane; prod generates its own superuser password."],
+      ["e_promoter_prodrepo","The reviewed commit is pushed fast-forward-only into sol-apps — the promotion record."],
+      ["e_prodrepo_wf","The push triggers deploy.yml, a thin caller of the shared reusable pipeline."],
+      ["e_wf_static","The public site rsyncs through the rrsync jail into /var/www/apps/‹slug›."],
+      ["e_wf_hooks","Server-side code and migrations rsync through the app's own write-only lane."],
+      ["e_visit","Live. Visitors reach the app at ‹slug›.solhann.net through Caddy."],
+    ]},
+  change: {
+    title:"CHANGE AN EXISTING APP — same gate",
+    intro:"Editing goes through the identical pipeline as creating, verified live with <code>hello</code>. The entry point is the app's overlay on the shelf → <code>build.html?change=‹slug›</code>.",
+    steps:[
+      ["e_build_start","A builder requests a change from the app's shelf overlay; greenlight refuses if the forge repo is missing, unready, or already has an open agent PR."],
+      ["e_gl_agent","The agent session starts against the EXISTING repo; spec.json updates travel in the same PR as the code."],
+      ["e_agent_forge","The agent pushes a branch and opens the PR as the bot."],
+      ["e_forge_previewer","The PR dispatches the previewer…"],
+      ["e_previewer_box","…which brings the changed app up on the preview box."],
+      ["e_rev_box","The reviewer uses the changed app before deciding."],
+      ["e_rev_gate","THE GATE, again — the same one. Approving the change merges it, and merging it puts it live."],
+      ["e_forge_promoter","Merge fires the dispatch."],
+      ["e_promoter_forge","Anonymous clone; spec.json check."],
+      ["e_promoter_prodrepo","Fast-forward push — the prod repo advances to exactly the reviewed commit. No provisioning this time; the jail already exists."],
+      ["e_prodrepo_wf","Deploy fires."],
+      ["e_wf_static","Public site updates through the jail."],
+      ["e_wf_hooks","Server-side code updates through the app's own lane."],
+    ]},
+  legacy: {
+    title:"LEGACY LANE — pre-greenlight apps",
+    intro:"How everything shipped before the pipeline, and still how pre-greenlight apps (this page included) are edited. No gate — the owner, by hand, on their own machine.",
+    steps:[
+      ["e_legacy_push","The owner edits locally and pushes straight to sol-apps main. create-app scaffolds new repos the same way (it provisioned the jail first, for data apps)."],
+      ["e_prodrepo_wf","The push triggers the same shared deploy as pipeline apps — from here the paths are identical."],
+      ["e_wf_static","Public site through the rrsync jail."],
+      ["e_wf_hooks","Server-side lane, if it's a data app."],
+    ]},
+  schema: {
+    title:"SCHEMA CHANGE — migrations only",
+    intro:"Data-shape changes take a slower road because real data is at stake. Nothing edits live schema — not the dashboard, not the API. Prod replays a recording.",
+    steps:[
+      ["e_schema","Schema is edited on a throwaway local PocketBase (pb-dev); the dashboard writes migration files, which get committed and pushed — through the gate for pipeline apps."],
+      ["e_prodrepo_wf","Deploy fires like any code change."],
+      ["e_wf_hooks","Migrations travel the write-only server-side lane, alongside hooks, with --checksum so unchanged files don't trigger restarts out of order."],
+      ["e_migrate","On the box: stop → snapshot to /var/backups → apply one at a time → quarantine failures → health-check. A bad migration steps aside; the app keeps running on the schema that worked."],
+    ]},
+};
+
+const OVERVIEW = `
+<h2>The greenlight pipeline</h2>
+<div class="sub">how an idea becomes a live app — with one human gate</div>
+<div class="bd">
+<p>This map is the whole system: three machines, two GitHub orgs, and the lines between them. <b>Every line is labelled with the credential that authorises it</b> and coloured by how dangerous that credential is — hover any of them.</p>
+<p>The shape is a loop: <span class="mark">greenlight itself is an app on the prod box it deploys to</span>. A builder talks to it, an agent builds in the dev org, a human approves, and the promoter carries the approved commit into the prod org, which deploys back onto the box.</p>
+<p>Four invariants hold everything up:</p>
+<ul>
+<li><b>Nothing in sol-forge can write to sol-apps.</b> The only exceptions are two start-only dispatch tokens that can press a button and nothing else.</li>
+<li><b>Promotion is fast-forward-only.</b> A non-FF push means someone touched prod directly: alert, never force.</li>
+<li><b>The PR review is the only gate — merging IS deploying.</b> Everything before it is untrusted; everything after it is automatic.</li>
+<li><b>Prod's superuser passwords never leave prod.</b> Every SSH lane in is write-only; none can read secrets back.</li>
+</ul>
+<p>Three paths reach prod, from most to least governed: the <b>promoter</b> (behind the gate), the owner's <b>legacy direct push</b> (pre-greenlight apps only), and the owner's <b>sudo lane</b> (interactive, password-gated). Nothing else does.</p>
+<p class="sub" style="margin-top:14px">▶ trace a flow from the top bar, or click anything on the map.</p>
+</div>`;
+
+/* ===================== geometry ===================== */
+const IX=30, IY=15, ZH=22;
+const uv2g = (u,v)=>[(v+u)/2,(v-u)/2];
+const iso  = (gx,gy,z=0)=>[(gx-gy)*IX, (gx+gy)*IY - z*ZH];
+const isoUV= (u,v,z=0)=>{ const [gx,gy]=uv2g(u,v); return iso(gx,gy,z); };
+const nodeById = Object.fromEntries(NODES.map(n=>[n.id,n]));
+const edgeById = Object.fromEntries(EDGES.map(e=>[e.id,e]));
+const zoneById = Object.fromEntries(ZONES.map(z=>[z.id,z]));
+const P = pts => pts.map(p=>p.join(",")).join(" ");
+
+const svg = document.getElementById("world");
+const NS = "http://www.w3.org/2000/svg";
+const el = (tag, attrs={}, parent)=>{ const n=document.createElementNS(NS,tag);
+  for(const k in attrs) n.setAttribute(k,attrs[k]); if(parent) parent.appendChild(n); return n; };
+
+/* defs: hatch patterns + arrowheads */
+const defs = el("defs",{},svg);
+function hatch(id, gap, sw){
+  const p = el("pattern",{id, width:gap, height:gap, patternUnits:"userSpaceOnUse", patternTransform:"rotate(45)"},defs);
+  el("rect",{width:gap,height:gap,fill:"var(--paper2)"},p);
+  el("line",{x1:0,y1:0,x2:0,y2:gap,stroke:"var(--line)","stroke-width":sw,"stroke-opacity":.5},p);
+}
+hatch("hatchA",4,1); hatch("hatchB",6,.8);
+for(const [cls,col] of Object.entries(CRED_COLORS)){
+  const m = el("marker",{id:"ar_"+cls, viewBox:"0 0 10 10", refX:8.5, refY:5, markerWidth:5.5, markerHeight:5.5, orient:"auto-start-reverse"},defs);
+  el("path",{d:"M0 0 L10 5 L0 10 z", fill:col.replace("var(--","").replace(")","") ? col : col},m);
+}
+
+const view = el("g",{},svg);          // pan/zoom container
+const gZones = el("g",{},view);
+const gEdges = el("g",{},view);
+const gNodes = el("g",{},view);
+const gDots  = el("g",{},view);
+
+/* zones */
+for(const z of ZONES){
+  const g = el("g",{class:"zone","data-z":z.id},gZones);
+  const c = [isoUV(z.u0,z.v0), isoUV(z.u1,z.v0), isoUV(z.u1,z.v1), isoUV(z.u0,z.v1)];
+  el("polygon",{class:"zfloor", points:P(c)},g);
+  const [lx,ly] = isoUV(z.u0,z.v0);
+  const t1 = el("text",{class:"zlab",x:lx+2,y:ly-17},g); t1.textContent = z.label;
+  const t2 = el("text",{class:"zsub",x:lx+2,y:ly-6},g); t2.textContent = z.sub;
+}
+
+/* edge geometry: floor anchor per node = its (u,v) */
+function edgePath(e){
+  const a = nodeById[e.from], b = nodeById[e.to];
+  const [x1,y1] = isoUV(a.u,a.v), [x2,y2] = isoUV(b.u,b.v);
+  // shorten ends so arrows don't bury in boxes
+  const dx=x2-x1, dy=y2-y1, L=Math.hypot(dx,dy)||1;
+  const s1 = 34/L, s2 = 40/L;
+  const ax=x1+dx*s1, ay=y1+dy*s1, bx=x2-dx*s2, by=y2-dy*s2;
+  // slight arc for legibility when lines overlap
+  const mx=(ax+bx)/2, my=(ay+by)/2;
+  const nx=-(by-ay)/L, ny=(bx-ax)/L;
+  const bow = e.bow!==undefined ? e.bow : 14;
+  return `M ${ax} ${ay} Q ${mx+nx*bow} ${my+ny*bow} ${bx} ${by}`;
+}
+
+const edgeEls = {};
+for(const e of EDGES){
+  const col = CRED_COLORS[e.cls];
+  const g = el("g",{"data-e":e.id},gEdges);
+  const path = el("path",{class:"edge"+(e.aux?" aux":""), d:edgePath(e),
+    stroke:col, "stroke-width": e.thin?1:(e.gate?2.6:1.6), "marker-end":`url(#ar_${e.cls})`},g);
+  const hit = el("path",{class:"edge hit", d:edgePath(e)},g);
+  edgeEls[e.id] = {g, path, hit, len:path.getTotalLength()};
+  if(e.gate){
+    const pt = path.getPointAtLength(path.getTotalLength()*0.5);
+    const t = el("text",{class:"gatelab", x:pt.x, y:pt.y-8, "text-anchor":"middle"},g);
+    t.textContent = "⛨ THE HUMAN GATE";
+  }
+  hit.addEventListener("pointerenter",ev=>{ hoverEdge(e,true); showTip(ev, `<b>${e.label}</b><span class="c">${e.cred}</span>`); });
+  hit.addEventListener("pointermove",moveTip);
+  hit.addEventListener("pointerleave",()=>{ hoverEdge(e,false); hideTip(); });
+  hit.addEventListener("click",ev=>{ ev.stopPropagation(); select("edge",e.id); });
+}
+function hoverEdge(e,on){ edgeEls[e.id].path.classList.toggle("hl",on || (sel.type==="edge"&&sel.id===e.id)); }
+
+/* nodes (isometric prisms) — painter's order: by u+v (screen depth) */
+const nodeEls = {};
+const sorted = [...NODES].sort((a,b)=>(a.v)-(b.v));
+for(const n of sorted){
+  const [gx,gy] = uv2g(n.u,n.v);
+  const w=n.w, d=n.d, h=n.h;
+  const c1=[gx-w/2,gy-d/2], c2=[gx+w/2,gy-d/2], c3=[gx+w/2,gy+d/2], c4=[gx-w/2,gy+d/2];
+  const T = c=>iso(c[0],c[1],h), F = c=>iso(c[0],c[1],0);
+  const g = el("g",{class:"node"+(n.kind==="actor"?" actor":""), "data-n":n.id, tabindex:0, role:"button",
+    "aria-label":n.label},gNodes);
+  el("polygon",{class:"fl", points:P([F(c4),F(c3),T(c3),T(c4)])},g);
+  el("polygon",{class:"fr", points:P([F(c3),F(c2),T(c2),T(c3)])},g);
+  el("polygon",{class:"ftop", points:P([T(c1),T(c2),T(c3),T(c4)])},g);
+  const [tx,ty] = iso(gx,gy,h);
+  const bd = el("text",{class:"badge", x:tx, y:ty+3},g); bd.textContent = n.badge||"";
+  const [lx,ly] = iso(gx,gy,0);
+  const lab = el("text",{class:"nl", x:lx, y:ly+16},g); lab.textContent = n.label;
+  nodeEls[n.id] = g;
+  g.addEventListener("pointerenter",ev=>showTip(ev,`<b>${n.label}</b><span class="c">${zoneById[n.zone].label}</span>`));
+  g.addEventListener("pointermove",moveTip);
+  g.addEventListener("pointerleave",hideTip);
+  g.addEventListener("click",ev=>{ ev.stopPropagation(); select("node",n.id); });
+  g.addEventListener("keydown",ev=>{ if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); select("node",n.id);} });
+}
+
+/* ===================== pan / zoom ===================== */
+let vb = null;
+function fit(){
+  const bb = view.getBBox();
+  const pad = 30;
+  vb = [bb.x-pad, bb.y-pad, bb.width+pad*2, bb.height+pad*2];
+  apply();
+}
+function apply(){ svg.setAttribute("viewBox", vb.join(" ")); }
+function zoom(f, cx, cy){
+  const r = svg.getBoundingClientRect();
+  const px = vb[0] + (cx-r.left)/r.width*vb[2];
+  const py = vb[1] + (cy-r.top)/r.height*vb[3];
+  vb = [px-(px-vb[0])*f, py-(py-vb[1])*f, vb[2]*f, vb[3]*f];
+  apply();
+}
+svg.addEventListener("wheel",ev=>{ ev.preventDefault(); zoom(ev.deltaY>0?1.12:1/1.12, ev.clientX, ev.clientY); },{passive:false});
+let pan=null;
+svg.addEventListener("pointerdown",ev=>{ pan={x:ev.clientX,y:ev.clientY,vb:[...vb]}; svg.classList.add("panning"); svg.setPointerCapture(ev.pointerId); });
+svg.addEventListener("pointermove",ev=>{ if(!pan) return;
+  const r=svg.getBoundingClientRect();
+  vb[0]=pan.vb[0]-(ev.clientX-pan.x)/r.width*vb[2];
+  vb[1]=pan.vb[1]-(ev.clientY-pan.y)/r.height*vb[3];
+  apply(); });
+svg.addEventListener("pointerup",()=>{ pan=null; svg.classList.remove("panning"); });
+svg.addEventListener("click",ev=>{ if(ev.target===svg) select(null); });
+document.getElementById("zin").onclick=()=>{ const r=svg.getBoundingClientRect(); zoom(1/1.25, r.left+r.width/2, r.top+r.height/2); };
+document.getElementById("zout").onclick=()=>{ const r=svg.getBoundingClientRect(); zoom(1.25, r.left+r.width/2, r.top+r.height/2); };
+document.getElementById("zfit").onclick=fit;
+
+/* ===================== tooltip ===================== */
+const tip = document.getElementById("tip");
+function showTip(ev, html){ tip.innerHTML=html; tip.style.display="block"; moveTip(ev); }
+function moveTip(ev){ const pad=14;
+  let x=ev.clientX+pad, y=ev.clientY+pad;
+  const w=tip.offsetWidth, h=tip.offsetHeight;
+  if(x+w>innerWidth-6) x=ev.clientX-w-pad;
+  if(y+h>innerHeight-6) y=ev.clientY-h-pad;
+  tip.style.left=x+"px"; tip.style.top=y+"px"; }
+function hideTip(){ tip.style.display="none"; }
+
+/* ===================== sidebar ===================== */
+const side = document.getElementById("side");
+for(const z of ZONES){
+  const grp = document.createElement("div"); grp.className="grp";
+  const ns = NODES.filter(n=>n.zone===z.id);
+  grp.innerHTML = `<div class="gl"><span>${z.label}</span><i>${ns.length}</i></div>`;
+  for(const n of ns){
+    const b=document.createElement("button"); b.className="item"; b.dataset.n=n.id;
+    b.innerHTML=`<span class="sw"></span>${n.label.toLowerCase()}`;
+    b.onclick=()=>select("node",n.id);
+    grp.appendChild(b);
+  }
+  side.appendChild(grp);
+}
+
+/* ===================== selection + panel ===================== */
+const panel = document.getElementById("panel");
+let sel = {type:null,id:null,tab:"what"};
+function edgesOf(nid){ return EDGES.filter(e=>e.from===nid||e.to===nid); }
+
+function select(type,id){
+  if(trace.on) stopTrace();
+  sel = {type, id, tab: sel.tab||"what"};
+  for(const n of NODES) nodeEls[n.id].classList.toggle("sel", type==="node"&&id===n.id);
+  document.querySelectorAll("#side .item").forEach(b=>b.classList.toggle("on", type==="node"&&b.dataset.n===id));
+  // highlight logic
+  if(type==="node"){
+    const near = new Set(edgesOf(id).map(e=>e.id));
+    for(const e of EDGES){ const E=edgeEls[e.id];
+      E.g.classList.toggle("dim", !near.has(e.id));
+      E.path.classList.toggle("hl", near.has(e.id)); }
+    for(const n of NODES){ const touch = n.id===id || edgesOf(id).some(e=>e.from===n.id||e.to===n.id);
+      nodeEls[n.id].classList.toggle("semi", !touch); nodeEls[n.id].classList.remove("dim"); }
+    renderNode(nodeById[id]);
+  } else if(type==="edge"){
+    for(const e of EDGES){ const E=edgeEls[e.id];
+      E.g.classList.toggle("dim", e.id!==id);
+      E.path.classList.toggle("hl", e.id===id); }
+    const e=edgeById[id];
+    for(const n of NODES) nodeEls[n.id].classList.toggle("semi", n.id!==e.from&&n.id!==e.to);
+    renderEdge(e);
+  } else {
+    clearHl(); panel.innerHTML = OVERVIEW;
+  }
+}
+function clearHl(){
+  for(const e of EDGES){ edgeEls[e.id].g.classList.remove("dim"); edgeEls[e.id].path.classList.remove("hl"); }
+  for(const n of NODES){ nodeEls[n.id].classList.remove("semi","dim","sel"); }
+  document.querySelectorAll("#side .item").forEach(b=>b.classList.remove("on"));
+}
+
+function relButtons(nid){
+  const es = edgesOf(nid);
+  if(!es.length) return "";
+  return `<div class="rel"><span class="k">connections</span>` + es.map(e=>{
+    const other = e.from===nid ? nodeById[e.to] : nodeById[e.from];
+    const dir = e.from===nid ? "→" : "←";
+    return `<button data-edge="${e.id}">${dir} ${other.label.toLowerCase()} · <span style="color:${CRED_COLORS[e.cls]}">${e.label}</span></button>`;
+  }).join("") + `</div>`;
+}
+function renderNode(n){
+  panel.innerHTML = `
+    <h2>${n.label}</h2><div class="sub">${zoneById[n.zone].label}</div>
+    <div class="tabs">
+      <button data-tab="what" class="${sel.tab==='what'?'on':''}">what it does</button>
+      <button data-tab="how" class="${sel.tab==='how'?'on':''}">how it's built</button>
+      <button data-tab="risk" class="${sel.tab==='risk'?'on':''}">risk</button>
     </div>
-  </section>
+    <div class="bd"><p>${n[sel.tab]}</p></div>
+    ${relButtons(n.id)}`;
+  panel.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{ sel.tab=b.dataset.tab; renderNode(n); });
+  panel.querySelectorAll("[data-edge]").forEach(b=>b.onclick=()=>select("edge",b.dataset.edge));
+}
+function renderEdge(e){
+  const a=nodeById[e.from], b=nodeById[e.to];
+  panel.innerHTML = `
+    <h2>${a.label} → ${b.label}</h2>
+    <div class="sub">${e.label}</div>
+    <div class="credbox"><span class="k">authorised by</span><br>
+      <span style="color:${CRED_COLORS[e.cls]}">■</span> ${e.cred}<br>
+      <span class="k" style="margin-top:6px;display:inline-block">carries</span><br>${e.carries}<br>
+      <span class="k" style="margin-top:6px;display:inline-block">class</span><br>${CRED_LABEL[e.cls]}</div>
+    <div class="bd"><p>${e.note}</p></div>
+    <div class="rel"><span class="k">endpoints</span>
+      <button data-n="${a.id}">◈ ${a.label.toLowerCase()}</button>
+      <button data-n="${b.id}">◈ ${b.label.toLowerCase()}</button></div>`;
+  panel.querySelectorAll("[data-n]").forEach(btn=>btn.onclick=()=>select("node",btn.dataset.n));
+}
 
-  <!-- 04 -->
-  <section>
-    <div class="reveal">
-      <div class="head"><span class="num">04</span><span class="kicker">STORAGE</span></div>
-      <h2>Two doors on the filing cabinet</h2>
-      <p class="body">Some apps store things — receipts, scores, whatever people save. Each of those gets its own small database, with two ways in that never cross.</p>
-
-      <div class="panel stage">
-        <svg viewBox="0 0 480 200" width="100%" role="img" aria-label="A filing cabinet with a front door for visitors and a back door for the maker.">
-          <rect x="188" y="26" width="104" height="150" rx="8" class="fpanel ln"/>
-          <line x1="188" y1="76" x2="292" y2="76" class="ln"/><line x1="188" y1="126" x2="292" y2="126" class="ln"/>
-          <rect x="230" y="46" width="20" height="6" rx="3" class="fcoral ln" stroke-width="2"/>
-          <rect x="230" y="96" width="20" height="6" rx="3" class="fcoral ln" stroke-width="2"/>
-          <rect x="230" y="146" width="20" height="6" rx="3" class="fcoral ln" stroke-width="2"/>
-          <text x="240" y="193" text-anchor="middle" class="tx">YOUR DATA</text>
-
-          <g transform="translate(40,74)">
-            <circle cx="26" cy="12" r="11" class="fpanel ln"/><path d="M6 44 a20 20 0 0 1 40 0" class="fpanel ln"/>
-            <text x="26" y="64" text-anchor="middle" class="txm">Visitors</text>
-          </g>
-          <path d="M96 92 h84" class="ln" stroke="var(--good)" marker-end="url(#ah)"/>
-          <text x="138" y="82" text-anchor="middle" class="tx">FRONT</text>
-
-          <g transform="translate(392,74)">
-            <circle cx="26" cy="12" r="11" class="fpanel ln"/><path d="M6 40 a20 20 0 0 1 40 0" class="fpanel ln"/>
-            <rect x="16" y="34" width="20" height="12" rx="1" class="fblue ln" stroke-width="2"/>
-            <text x="26" y="64" text-anchor="middle" class="txm">You</text>
-          </g>
-          <path d="M384 92 h-84" class="ln" stroke="var(--sky)" marker-end="url(#ah2)"/>
-          <text x="342" y="82" text-anchor="middle" class="tx">BACK</text>
-
-          <defs>
-            <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="fgreen"/></marker>
-            <marker id="ah2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="fblue"/></marker>
-          </defs>
-        </svg>
-      </div>
-
-      <div class="cards">
-        <div class="card"><h3>FRONT DOOR · VISITORS</h3><p>Where visitors land. Every read runs through a rule that checks who’s asking, so people only ever get their own rows back.</p></div>
-        <div class="card"><h3>BACK DOOR · THE MAKER</h3><p>Where you push the app’s server-side code. That channel can add new logic but can’t read the stored data, so a bug you ship can’t quietly leak the database.</p></div>
-      </div>
-
-      <details class="uh">
-        <summary>UNDER THE HOOD</summary>
-        <div class="uhbody">
-          <p>Storage is <a href="https://pocketbase.io/docs/api-rules-and-filters/" target="_blank" rel="noopener">PocketBase</a>, one instance per app, bound to <code>127.0.0.1</code> behind <a href="https://caddyserver.com/docs/" target="_blank" rel="noopener">Caddy</a>. Front-door access is governed by rule expressions checked on every query — for example <code>owner = @request.headers.x_owner</code> — so an app can’t forget to scope a read.</p>
-          <p>The admin console is protected by a long, random password that’s unique to each app — there’s no shared login. The back door, where hook code lands, is the write-only key from section 02 — it can add behaviour but never read what’s stored.</p>
-        </div>
-      </details>
+/* ===================== flow tracing ===================== */
+const tracebar = document.getElementById("tracebar");
+let trace = {on:false, flow:null, i:-1};
+function startTrace(name){
+  clearHl(); sel={type:null,id:null,tab:sel.tab};
+  trace = {on:true, flow:name, i:-1};
+  const f = FLOWS[name];
+  const inFlow = new Set(f.steps.map(s=>s[0]));
+  for(const e of EDGES) edgeEls[e.id].g.classList.toggle("dim", !inFlow.has(e.id));
+  const touched = new Set();
+  f.steps.forEach(s=>{ const e=edgeById[s[0]]; touched.add(e.from); touched.add(e.to); });
+  for(const n of NODES) nodeEls[n.id].classList.toggle("semi", !touched.has(n.id));
+  document.querySelectorAll("[data-flow]").forEach(b=>b.classList.toggle("primary", b.dataset.flow===name));
+  tracebar.classList.add("on");
+  stepTrace(1);
+}
+function stepTrace(dir){
+  const f = FLOWS[trace.flow];
+  trace.i = Math.min(Math.max(trace.i+dir, 0), f.steps.length-1);
+  const [eid, txt] = f.steps[trace.i];
+  for(let k=0;k<f.steps.length;k++){
+    const E = edgeEls[f.steps[k][0]];
+    E.path.classList.toggle("hl", k<=trace.i);
+    E.g.classList.toggle("dim", false);
+    E.g.style.opacity = k<=trace.i ? 1 : .25;
+  }
+  const e = edgeById[eid];
+  tracebar.querySelector(".tt").textContent = f.title;
+  tracebar.querySelector(".st").textContent = `step ${trace.i+1}/${f.steps.length}`;
+  panel.innerHTML = `
+    <h2>${f.title}</h2><div class="sub">step ${trace.i+1} of ${f.steps.length}</div>
+    <div class="bd"><p>${txt}</p></div>
+    <div class="credbox"><span class="k">this line</span><br>
+      ${nodeById[e.from].label} → ${nodeById[e.to].label}<br>
+      <span class="k" style="margin-top:6px;display:inline-block">authorised by</span><br>
+      <span style="color:${CRED_COLORS[e.cls]}">■</span> ${e.cred}</div>
+    <div class="stepnav">
+      <button class="btn" id="pv" ${trace.i===0?"disabled":""}>← back</button>
+      <button class="btn primary" id="nx" ${trace.i===f.steps.length-1?"disabled":""}>next →</button>
+      <button class="btn" id="xx">end trace</button>
     </div>
-  </section>
+    <div class="bd" style="margin-top:14px"><p class="sub">${f.intro}</p></div>`;
+  const pv=panel.querySelector("#pv"), nx=panel.querySelector("#nx");
+  if(pv) pv.onclick=()=>stepTrace(-1);
+  if(nx) nx.onclick=()=>stepTrace(1);
+  panel.querySelector("#xx").onclick=stopTrace;
+  pulse(eid);
+}
+function stopTrace(){
+  trace={on:false,flow:null,i:-1};
+  tracebar.classList.remove("on");
+  for(const e of EDGES) edgeEls[e.id].g.style.opacity="";
+  clearHl();
+  document.querySelectorAll("[data-flow]").forEach(b=>b.classList.toggle("primary", b.dataset.flow==="build"));
+  panel.innerHTML = OVERVIEW;
+}
+document.querySelectorAll("[data-flow]").forEach(b=>b.onclick=()=>startTrace(b.dataset.flow));
+document.getElementById("resetBtn").onclick=()=>{ stopTrace(); fit(); };
+addEventListener("keydown",ev=>{
+  if(!trace.on) return;
+  if(ev.key==="ArrowRight"||ev.key==="Right"){ ev.preventDefault(); stepTrace(1); }
+  else if(ev.key==="ArrowLeft"||ev.key==="Left"){ ev.preventDefault(); stepTrace(-1); }
+  else if(ev.key==="Escape"||ev.key==="Esc"){ stopTrace(); }
+});
 
-  <!-- 05 -->
-  <section>
-    <div class="reveal">
-      <div class="head"><span class="num">05</span><span class="kicker">SAFE CHANGES</span></div>
-      <h2>Changing the data’s shape, without losing it</h2>
-      <p class="body">Editing a page is easy to undo. Changing how the <b>data</b> is stored — adding a “date” to every saved receipt, say — is riskier, because there’s real information already sitting there. So those changes take a slower, safer road.</p>
-      <p class="body">You rehearse the change on a throwaway copy on your own computer first. When it ships, the server doesn’t just apply it and hope: it takes a full backup, makes the change, then checks the app still answers. If something’s wrong, it sets that change aside and keeps the app running on whatever worked a moment ago.</p>
+/* one bright pulse along the active edge */
+let pulseDot=null;
+function pulse(eid){
+  if(pulseDot) pulseDot.remove();
+  if(matchMedia("(prefers-reduced-motion:reduce)").matches) return;
+  const E=edgeEls[eid], e=edgeById[eid];
+  pulseDot = el("circle",{class:"dot", r:4, fill:CRED_COLORS[e.cls], stroke:"var(--paper)","stroke-width":1},gDots);
+  const t0=performance.now(), D=900;
+  (function f(t){ const p=Math.min((t-t0)/D,1);
+    const pt=E.path.getPointAtLength(E.len*p);
+    pulseDot.setAttribute("cx",pt.x); pulseDot.setAttribute("cy",pt.y);
+    if(p<1 && pulseDot) requestAnimationFrame(f); })(t0);
+}
 
-      <div class="cards">
-        <div class="card"><h3>A BACKUP, EVERY TIME</h3><p>Before the server touches your stored data, it saves a complete copy. A change gone wrong is a restore away, not a disaster.</p></div>
-        <div class="card"><h3>A BAD ONE STEPS ASIDE</h3><p>If a change fails, it’s set aside and the app carries on with the last version that worked — no downtime, no half-broken state.</p></div>
-      </div>
-
-      <p class="aside">Nobody edits the live data by hand. Even the person who builds the apps has no direct login to the live server — the only way a change reaches real data is through this reviewed, backed-up path.</p>
-
-      <details class="uh">
-        <summary>UNDER THE HOOD</summary>
-        <div class="uhbody">
-          <p>Data-shape changes are PocketBase <em>migration</em> files, committed to the repo alongside the code. On the server a watcher runs <code>pb-migrate</code>: it stops the app, tarballs the data into <code>/var/backups</code> (keeping the last ten), applies the migrations one at a time, restarts, and probes <code>/api/health</code>.</p>
-          <p>A migration that fails is moved into <code>pb_migrations_failed/</code> so the app recovers on its previous schema instead of restarting forever. And the dev machine has <b>no root login to the live server at all</b> — code and schema can only arrive through this automated path, never a manual poke.</p>
-          <p><a href="https://pocketbase.io/docs/go-migrations/" target="_blank" rel="noopener">How PocketBase migrations work →</a></p>
-        </div>
-      </details>
-    </div>
-  </section>
-
-  <!-- 06 -->
-  <section>
-    <div class="reveal">
-      <div class="head"><span class="num">06</span><span class="kicker">THE GALLERY</span></div>
-      <h2>It assembles itself</h2>
-      <div class="panel">
-        <p class="body">Publish an app and it shows up on the front page by itself. There’s no list to keep. The gallery scans for tagged repos and builds the grid from whatever it finds.</p>
-        <p class="aside">This page is one of those apps. It went through every step above to get here — which is also why its source is public.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- CTA -->
-  <section class="cta">
-    <div class="reveal">
-      <svg width="62" height="62" viewBox="0 0 60 60" role="img" aria-label="gallery">
-        <rect x="8" y="14" width="44" height="34" rx="4" class="fpanel ln"/>
-        <circle cx="20" cy="25" r="4" class="fsun"/>
-        <path d="M13 46 l13 -16 l9 10 l7 -8 l7 14 z" class="fblue ln" stroke-width="2"/>
-      </svg>
-      <br>
-      <a class="btn" href="https://create.solhann.net">SEE EVERY APP →</a>
-    </div>
-  </section>
-
-  <footer>Built on solhann.net · <a href="https://create.solhann.net">back to the gallery</a></footer>
-
-  <script>
-    const root=document.documentElement, tbtn=document.getElementById('t');
-    const setTheme=t=>{ root.setAttribute('data-theme',t); tbtn.textContent=t==='dark'?'LIGHT':'DARK'; localStorage.setItem('solhann_theme',t); };
-    setTheme(localStorage.getItem('solhann_theme')||'light');
-    tbtn.onclick=()=>setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark');
-
-    const bar=document.getElementById('progress');
-    const onScroll=()=>{ const h=document.documentElement; bar.style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight||1)*100)+'%'; };
-    addEventListener('scroll', onScroll, {passive:true}); onScroll();
-
-    // hero address bar cycles through real app names
-    const host=document.getElementById('host');
-    const names=['quiz','expenses','gallery','architecture','notes','paint'];
-    let ni=0;
-    if(!matchMedia('(prefers-reduced-motion:reduce)').matches){
-      setInterval(()=>{ ni=(ni+1)%names.length; host.style.opacity=0;
-        setTimeout(()=>{ host.textContent=names[ni]; host.style.opacity=1; }, 180); }, 2400);
-      host.style.transition='opacity .18s';
+/* ===================== ambient dots ===================== */
+const ambient=[];
+if(!matchMedia("(prefers-reduced-motion:reduce)").matches){
+  EDGES.forEach((e,i)=>{ if(e.thin) return;
+    const c=el("circle",{class:"dot", r:2.4, fill:CRED_COLORS[e.cls], "fill-opacity":.85},gDots);
+    ambient.push({e, c, t:(i*0.37)%1, sp:0.00009+((i*7)%5)*0.00002});
+  });
+  let last=performance.now();
+  (function loop(now){
+    const dt=now-last; last=now;
+    for(const a of ambient){
+      const dimmed = a.c && edgeEls[a.e.id].g.classList.contains("dim");
+      const traced = trace.on;
+      a.t=(a.t+a.sp*dt)%1;
+      const pt=edgeEls[a.e.id].path.getPointAtLength(edgeEls[a.e.id].len*a.t);
+      a.c.setAttribute("cx",pt.x); a.c.setAttribute("cy",pt.y);
+      a.c.setAttribute("fill-opacity", dimmed||traced ? .06 : .85);
     }
+    requestAnimationFrame(loop);
+  })(last);
+}
 
-    const revIO=new IntersectionObserver((es)=>{ es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); revIO.unobserve(e.target); } }); }, {threshold:.16});
-    document.querySelectorAll('.reveal').forEach(el=>revIO.observe(el));
-
-    // ambient loops for the containment diagram, only while on screen
-    const goIO=new IntersectionObserver((es)=>{ es.forEach(e=>e.target.classList.toggle('go', e.isIntersecting)); }, {threshold:.25});
-    const rooms=document.getElementById('roomsStage'); if(rooms) goIO.observe(rooms);
-
-    // pipeline: a triggerable one-shot "watch it ship"
-    const stage=document.getElementById('pipeStage');
-    const packet=stage.querySelector('.packet');
-    const leds=[...stage.querySelectorAll('.led')];
-    const check=stage.querySelector('.check');
-    const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
-    function runPipe(){
-      if(stage.dataset.running) return; stage.dataset.running='1';
-      leds.forEach(l=>l.classList.remove('lit')); check.classList.remove('on');
-      const T=3000, stops=[0.02,0.30,0.60,0.92];
-      packet.getAnimations && packet.getAnimations().forEach(a=>a.cancel());
-      if(!reduce && packet.animate){
-        packet.animate([{transform:'translateX(0)'},{transform:'translateX(384px)'}],{duration:T,easing:'cubic-bezier(.5,0,.5,1)',fill:'forwards'});
-      }
-      stops.forEach((p,i)=>setTimeout(()=>leds[i].classList.add('lit'), reduce?0:p*T));
-      setTimeout(()=>{ check.classList.add('on'); stage.dataset.running=''; }, reduce?0:T);
-    }
-    document.getElementById('runBtn').onclick=runPipe;
-    // auto-play once when it first scrolls into view
-    const playIO=new IntersectionObserver((es)=>{ es.forEach(e=>{ if(e.isIntersecting){ setTimeout(runPipe,350); playIO.unobserve(e.target); } }); }, {threshold:.4});
-    playIO.observe(stage);
-  </script>
+/* ===================== boot ===================== */
+panel.innerHTML = OVERVIEW;
+fit();
+</script>
 </body>
 </html>
