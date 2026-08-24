@@ -678,7 +678,14 @@ layoutZoneCaptions();
 // only reason it is safe; a proportional fallback already flips one caption
 // from two lines to one. Keep this re-layout if .zsub ever stops being mono.
 if(document.fonts && document.fonts.ready)
-  document.fonts.ready.then(()=>{ layoutZoneCaptions(); fit(); }).catch(()=>{});
+  document.fonts.ready.then(()=>{
+    layoutZoneCaptions();
+    // Google Fonts can take seconds on a cold link — well inside interaction
+    // time — so by the time this resolves the reader may already be dragging.
+    // Refit only if they have not taken hold of the view. (Invisible on a warm
+    // cache, which is every dev machine: the same place the wrap bug hid.)
+    if(!viewTouched) fit();
+  }).catch(()=>{});
 
 /* edge geometry: floor anchor per node = its (u,v) */
 function edgePath(e){
@@ -766,6 +773,10 @@ for(const n of sorted){
 
 /* ===================== pan / zoom ===================== */
 let vb = null;
+// Set the moment the reader pans or zooms. Any refit that the reader did not
+// ask for must respect it — a late async refit that snaps the view back has no
+// visible cause and looks like the page fighting them.
+let viewTouched = false;
 function fit(){
   const bb = view.getBBox(), pad = 34;
   let x=bb.x-pad, y=bb.y-pad, w=bb.width+pad*2, h=bb.height+pad*2;
@@ -780,6 +791,7 @@ function fit(){
 }
 function apply(){ svg.setAttribute("viewBox", vb.join(" ")); }
 function zoom(f, cx, cy){
+  viewTouched = true;
   const r = svg.getBoundingClientRect();
   const px = vb[0] + (cx-r.left)/r.width*vb[2];
   const py = vb[1] + (cy-r.top)/r.height*vb[3];
@@ -799,7 +811,7 @@ svg.addEventListener("pointermove",ev=>{ if(!pan) return;
   const dx=ev.clientX-pan.x, dy=ev.clientY-pan.y;
   if(!dragged){
     if(Math.hypot(dx,dy) < DRAG_MIN) return;
-    dragged=true; svg.classList.add("panning");
+    dragged=true; viewTouched=true; svg.classList.add("panning");
     try{ svg.setPointerCapture(pan.id); }catch(_){}
   }
   const r=svg.getBoundingClientRect();
@@ -814,7 +826,7 @@ svg.addEventListener("pointercancel",endPan);
 svg.addEventListener("click",ev=>{ if(dragged){ dragged=false; return; } if(ev.target===svg) select(null); });
 document.getElementById("zin").onclick=()=>{ const r=svg.getBoundingClientRect(); zoom(1/1.25, r.left+r.width/2, r.top+r.height/2); };
 document.getElementById("zout").onclick=()=>{ const r=svg.getBoundingClientRect(); zoom(1.25, r.left+r.width/2, r.top+r.height/2); };
-document.getElementById("zfit").onclick=fit;
+document.getElementById("zfit").onclick=()=>{ viewTouched=false; fit(); };
 
 /* ===================== tooltip ===================== */
 const tip = document.getElementById("tip");
@@ -968,8 +980,14 @@ function stepTrace(dir){
     // "you are here" spoke depend on which credential the step happened to use.
     // Current is carried by motion (a looping pulse) plus the red numbered
     // marker instead. Only when motion is unavailable does weight stand in.
-    E.path.style.strokeWidth = (k===trace.i && REDUCED)
-      ? (parseFloat(E.path.getAttribute("stroke-width")) + 2.6) + "px" : "";
+    // Read the base width defensively: this is the ONLY current-step cue for a
+    // reduced-motion reader, and if widths ever move to pure CSS the attribute
+    // lookup would yield NaN and fail silently on the accessibility path alone.
+    if(k===trace.i && REDUCED){
+      const base = parseFloat(E.path.getAttribute("stroke-width"))
+                || parseFloat(getComputedStyle(E.path).strokeWidth) || 1.8;
+      E.path.style.strokeWidth = (base + 2.6) + "px";
+    } else E.path.style.strokeWidth = "";
   }
   stepMarks(f);
   const e = edgeById[eid];
@@ -1005,7 +1023,7 @@ function stopTrace(){
   panel.innerHTML = overview();
 }
 document.querySelectorAll("[data-flow]").forEach(b=>b.onclick=()=>startTrace(b.dataset.flow));
-document.getElementById("resetBtn").onclick=()=>{ stopTrace(); select(null); fit(); };
+document.getElementById("resetBtn").onclick=()=>{ stopTrace(); select(null); viewTouched=false; fit(); };
 document.getElementById("resetBtn").title="Clear the selection and refit the map. Leaves the laptop toggle alone.";
 // Without this a rotated phone keeps the portrait framing forever.
 let rt=null;
