@@ -20,6 +20,12 @@ Built for reasoning about the system, not just admiring it:
   direct-push lane, and a schema change.
 - The one human gate — approving the PR — is marked on the map, because merging
   IS deploying.
+- **Hide the laptop** (button, top right) drops the owner's own machine — the
+  platform CLI, the pb-dev workbench, the secret store, and the two direct lanes
+  into prod that only a person at that keyboard can use. The header counts and
+  the overview change with it, and the two flows that start there are disabled
+  rather than silently truncated, so the reduced picture never overstates itself.
+  The choice sticks, and `?nolaptop` shares it as a link.
 
 The whole page is a single `index.html`; the diagram is generated from a data
 model at the top of the script, so editing the architecture doc means editing
