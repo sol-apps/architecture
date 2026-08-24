@@ -642,17 +642,43 @@ for(const z of ZONES){
   const g = el("g",{class:"zone","data-z":z.id},gZones);
   const c = [isoUV(z.u0,z.v0), isoUV(z.u1,z.v0), isoUV(z.u1,z.v1), isoUV(z.u0,z.v1)];
   el("polygon",{class:"zfloor", points:P(c)},g);
-  const [lx,ly] = isoUV(z.u0,z.v0);
-  // A caption is allowed to overhang its frame a little, never to run off the
-  // drawing: PREVIEW BOX's subtitle is 2x its zone's width and used to end up
-  // under the detail panel. Wrap to at most two lines measured in user units.
-  const maxW = Math.max((z.u1-z.u0)*IX, 210);
-  const lines = wrapText(z.sub, maxW, 2);
-  const top = lines.length > 1 ? ly-36 : ly-22;
-  const t1 = el("text",{class:"zlab","data-zlab":z.id,x:lx+2,y:top},gLabels); t1.textContent = z.label;
-  const t2 = el("text",{class:"zsub","data-zlab":z.id,x:lx+2,y:top+14},gLabels);
-  lines.forEach((ln,i)=>{ const ts=el("tspan",{x:lx+2,y:top+14+i*11},t2); ts.textContent=ln; });
 }
+
+// Captions live in their own sub-layer so they can be rebuilt in place without
+// disturbing paint order against the node labels above them.
+const gZoneCaps = el("g",{},gLabels);
+function layoutZoneCaptions(){
+  gZoneCaps.textContent = "";
+  for(const z of ZONES){
+    const [lx,ly] = isoUV(z.u0,z.v0);
+    // A caption may overhang its frame a little, never run off the drawing:
+    // PREVIEW BOX's subtitle is 2x its zone's width and used to end up under
+    // the detail panel. Wrap to at most two lines, measured in user units.
+    const maxW = Math.max((z.u1-z.u0)*IX, 210);
+    const lines = wrapText(z.sub, maxW, 2);
+    const top = lines.length > 1 ? ly-36 : ly-22;
+    const t1 = el("text",{class:"zlab","data-zlab":z.id,x:lx+2,y:top},gZoneCaps); t1.textContent = z.label;
+    const t2 = el("text",{class:"zsub","data-zlab":z.id,x:lx+2,y:top+14},gZoneCaps);
+    lines.forEach((ln,i)=>{ const ts=el("tspan",{x:lx+2,y:top+14+i*11},t2); ts.textContent=ln; });
+  }
+  // Read the state off the DOM, not off `laptopHidden`: this runs during the
+  // initial build, when that binding is still in its temporal dead zone — and
+  // `typeof` on a TDZ `let` THROWS rather than returning "undefined", so the
+  // usual guard is no guard at all.
+  const lz = gZones.querySelector('[data-z="laptop"]');
+  if(lz && lz.style.display === "none")
+    gZoneCaps.querySelectorAll('[data-zlab="laptop"]').forEach(t=>{ t.style.display="none"; });
+}
+layoutZoneCaptions();
+
+// The stylesheet loads with font-display:swap, so this first pass may have
+// measured the FALLBACK face. Re-wrap once the real one is in. Today the drift
+// is 0.3% and no break moves — because .zsub is monospace and Plex Mono's
+// advance width matches the Menlo/SF Mono fallback almost exactly. That is the
+// only reason it is safe; a proportional fallback already flips one caption
+// from two lines to one. Keep this re-layout if .zsub ever stops being mono.
+if(document.fonts && document.fonts.ready)
+  document.fonts.ready.then(()=>{ layoutZoneCaptions(); fit(); }).catch(()=>{});
 
 /* edge geometry: floor anchor per node = its (u,v) */
 function edgePath(e){
@@ -937,9 +963,12 @@ function stepTrace(dir){
     E.path.classList.toggle("hl", k<=trace.i);
     E.g.classList.toggle("dim", false);
     E.g.style.opacity = k<=trace.i ? 1 : .25;
-    // Numbers give the walk an order; weight gives it a CURRENT step. Without
-    // this the active edge is the same 1.8px as any other scoped line.
-    E.path.style.strokeWidth = (k===trace.i)
+    // "Current step" deliberately does NOT ride on weight: weight already means
+    // credential danger, and stacking a second meaning on it made how loudly
+    // "you are here" spoke depend on which credential the step happened to use.
+    // Current is carried by motion (a looping pulse) plus the red numbered
+    // marker instead. Only when motion is unavailable does weight stand in.
+    E.path.style.strokeWidth = (k===trace.i && REDUCED)
       ? (parseFloat(E.path.getAttribute("stroke-width")) + 2.6) + "px" : "";
   }
   stepMarks(f);
@@ -968,6 +997,7 @@ function stepTrace(dir){
 function stopTrace(){
   trace={on:false,flow:null,i:-1};
   gMarks.textContent = "";
+  pulse(null);                       // stop the looping "you are here" marker
   tracebar.classList.remove("on");
   for(const e of EDGES){ edgeEls[e.id].g.style.opacity=""; edgeEls[e.id].path.style.strokeWidth=""; }
   clearHl();
@@ -1018,17 +1048,21 @@ function stepMarks(f){
 }
 
 /* one bright pulse along the active edge */
-let pulseDot=null;
+let pulseDot=null, pulseRAF=null;
 function pulse(eid){
-  if(pulseDot) pulseDot.remove();
-  if(REDUCED) return;
+  if(pulseRAF){ cancelAnimationFrame(pulseRAF); pulseRAF=null; }
+  if(pulseDot){ pulseDot.remove(); pulseDot=null; }
+  if(REDUCED || !eid) return;
   const E=edgeEls[eid], e=edgeById[eid];
-  pulseDot = el("circle",{class:"dot", r:4, fill:CRED_COLORS[e.cls], stroke:"var(--paper)","stroke-width":1},gDots);
-  const t0=performance.now(), D=900;
-  (function f(t){ const p=Math.min((t-t0)/D,1);
+  pulseDot = el("circle",{class:"dot", r:4.5, fill:CRED_COLORS[e.cls],
+    stroke:"var(--paper)","stroke-width":1.4},gDots);
+  // Repeats for as long as this step is the current one — a single shot said
+  // "something happened here", not "you are here".
+  const D=1500, t0=performance.now();
+  (function f(t){ const p=((t-t0)%D)/D;
     const pt=E.path.getPointAtLength(E.len*p);
     pulseDot.setAttribute("cx",pt.x); pulseDot.setAttribute("cy",pt.y);
-    if(p<1 && pulseDot) requestAnimationFrame(f); })(t0);
+    pulseRAF=requestAnimationFrame(f); })(t0);
 }
 
 /* ===================== hide the laptop =====================
@@ -1052,7 +1086,7 @@ function setLaptop(hidden){
   laptopHidden = hidden;
   const off = hidden ? "none" : "";
   const zone = gZones.querySelector('[data-z="laptop"]'); if(zone) zone.style.display = off;
-  gLabels.querySelectorAll('[data-zlab="laptop"]').forEach(t=>{ t.style.display = off; });
+  gZoneCaps.querySelectorAll('[data-zlab="laptop"]').forEach(t=>{ t.style.display = off; });
   LAPTOP_NODES.forEach(id=>{ nodeEls[id].style.display = off; labelEls[id].style.display = off; });
   LAPTOP_EDGES.forEach(id=>{ edgeEls[id].g.style.display = off; });
   const grp = side.querySelector('.grp[data-z="laptop"]'); if(grp) grp.style.display = off;
