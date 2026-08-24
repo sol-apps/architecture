@@ -185,7 +185,7 @@ text{ font-family:"IBM Plex Mono",ui-monospace,monospace; fill:var(--ink); user-
   #side .grp{ display:flex; flex-wrap:wrap; gap:6px; padding:11px 12px 12px }
   #side .grp>.gl{ flex-basis:100%; padding:0 0 3px }
   #side button.item{ width:auto; border:1.5px solid var(--faint); border-left-width:1.5px;
-                     padding:5px 9px; background:var(--paper2) }
+                     padding:10px 11px; background:var(--paper2) }
   #side button.item.on{ border-color:var(--red); border-left-color:var(--red) }
   header .cell{ border-bottom:1px solid var(--faint) }
   #tracebar{ max-width:calc(100% - 24px) }
@@ -235,7 +235,7 @@ text{ font-family:"IBM Plex Mono",ui-monospace,monospace; fill:var(--ink); user-
       <span class="lg key"><i style="border-color:var(--blue);border-top-style:dashed"></i>scoped / jailed</span>
       <span class="lg key"><i style="border-color:var(--red);border-top-width:4px"></i>prod-writing</span>
       <span class="lg key"><i style="border-color:var(--amber);border-top-style:dotted;border-top-width:3px"></i>human action</span>
-      <span class="lg"><i style="border-color:var(--mut);opacity:.6"></i>faded = admin / legacy lane</span>
+      <span class="lg key"><i style="border-color:var(--mut);opacity:.6"></i>faded = admin / legacy</span>
     </div>
   </div>
   <aside id="panel"></aside>
@@ -613,14 +613,45 @@ const gLabels= el("g",{},view);   // ALL map text, painted above every solid
 const gMarks = el("g",{},view);
 const gDots  = el("g",{},view);
 
+/* Greedy wrap measured against the real font, in user units. */
+function wrapText(str, maxW, maxLines){
+  const probe = el("text",{class:"zsub",x:-99999,y:-99999},view);
+  const w = t => { probe.textContent = t; return probe.getComputedTextLength(); };
+  const words = str.split(" "), lines = [];
+  let cur = "";
+  for(let i=0;i<words.length;i++){
+    const t = cur ? cur+" "+words[i] : words[i];
+    if(cur && w(t) > maxW){
+      lines.push(cur); cur = words[i];
+      if(lines.length === maxLines-1 && i < words.length-1){
+        // last permitted line: take what fits and mark the truncation
+        let rest = words.slice(i).join(" ");
+        while(rest && w(rest+"\u2026") > maxW) rest = rest.slice(0, -1).replace(/\s+\S*$/,"");
+        lines.push(rest === words.slice(i).join(" ") ? rest : rest+"\u2026");
+        cur = ""; break;
+      }
+    } else cur = t;
+  }
+  if(cur) lines.push(cur);
+  probe.remove();
+  return lines;
+}
+
 /* zones */
 for(const z of ZONES){
   const g = el("g",{class:"zone","data-z":z.id},gZones);
   const c = [isoUV(z.u0,z.v0), isoUV(z.u1,z.v0), isoUV(z.u1,z.v1), isoUV(z.u0,z.v1)];
   el("polygon",{class:"zfloor", points:P(c)},g);
   const [lx,ly] = isoUV(z.u0,z.v0);
-  const t1 = el("text",{class:"zlab","data-zlab":z.id,x:lx+2,y:ly-22},gLabels); t1.textContent = z.label;
-  const t2 = el("text",{class:"zsub","data-zlab":z.id,x:lx+2,y:ly-8},gLabels); t2.textContent = z.sub;
+  // A caption is allowed to overhang its frame a little, never to run off the
+  // drawing: PREVIEW BOX's subtitle is 2x its zone's width and used to end up
+  // under the detail panel. Wrap to at most two lines measured in user units.
+  const maxW = Math.max((z.u1-z.u0)*IX, 210);
+  const lines = wrapText(z.sub, maxW, 2);
+  const top = lines.length > 1 ? ly-36 : ly-22;
+  const t1 = el("text",{class:"zlab","data-zlab":z.id,x:lx+2,y:top},gLabels); t1.textContent = z.label;
+  const t2 = el("text",{class:"zsub","data-zlab":z.id,x:lx+2,y:top+14},gLabels);
+  lines.forEach((ln,i)=>{ const ts=el("tspan",{x:lx+2,y:top+14+i*11},t2); ts.textContent=ln; });
 }
 
 /* edge geometry: floor anchor per node = its (u,v) */
@@ -639,6 +670,7 @@ function edgePath(e){
 }
 
 const edgeEls = {};
+let GATE_BOX = null;
 for(const e of EDGES){
   const col = CRED_COLORS[e.cls];
   const g = el("g",{"data-e":e.id},gEdges);
@@ -656,7 +688,8 @@ for(const e of EDGES){
   if(e.gate){
     const pt = path.getPointAtLength(path.getTotalLength()*0.5);
     const gl = el("g",{class:"gatemark"},gLabels);
-    el("rect",{x:pt.x-84, y:pt.y-26, width:168, height:19, rx:2,
+    GATE_BOX = {x:pt.x-84, y:pt.y-26, w:168, h:19};
+    el("rect",{x:GATE_BOX.x, y:GATE_BOX.y, width:GATE_BOX.w, height:GATE_BOX.h, rx:2,
       fill:"var(--paper)", stroke:"var(--red)", "stroke-width":1.4},gl);
     const t = el("text",{class:"gatelab", x:pt.x, y:pt.y-12},gl);
     t.textContent = "\u26e8 THE HUMAN GATE";
@@ -904,6 +937,10 @@ function stepTrace(dir){
     E.path.classList.toggle("hl", k<=trace.i);
     E.g.classList.toggle("dim", false);
     E.g.style.opacity = k<=trace.i ? 1 : .25;
+    // Numbers give the walk an order; weight gives it a CURRENT step. Without
+    // this the active edge is the same 1.8px as any other scoped line.
+    E.path.style.strokeWidth = (k===trace.i)
+      ? (parseFloat(E.path.getAttribute("stroke-width")) + 2.6) + "px" : "";
   }
   stepMarks(f);
   const e = edgeById[eid];
@@ -932,7 +969,7 @@ function stopTrace(){
   trace={on:false,flow:null,i:-1};
   gMarks.textContent = "";
   tracebar.classList.remove("on");
-  for(const e of EDGES) edgeEls[e.id].g.style.opacity="";
+  for(const e of EDGES){ edgeEls[e.id].g.style.opacity=""; edgeEls[e.id].path.style.strokeWidth=""; }
   clearHl();
   document.querySelectorAll("[data-flow]").forEach(b=>b.classList.toggle("primary", b.dataset.flow==="build"));
   panel.innerHTML = overview();
@@ -958,7 +995,18 @@ function stepMarks(f){
   gMarks.textContent = "";
   for(let k=0;k<=trace.i;k++){
     const E = edgeEls[f.steps[k][0]];
-    const pt = E.path.getPointAtLength(E.len*0.5);
+    // No step number may sit on the gate plate — not the gate's own (its plate
+    // is at that edge's midpoint) and not a passing line whose midpoint happens
+    // to land there. Slide along the line until the number is clear.
+    const gate = edgeById[f.steps[k][0]].gate;
+    const tries = gate ? [0.26,0.16,0.36,0.74] : [0.5,0.36,0.64,0.24,0.76];
+    let pt = E.path.getPointAtLength(E.len*tries[0]);
+    for(const t of tries){
+      const p = E.path.getPointAtLength(E.len*t);
+      pt = p;
+      if(!GATE_BOX || p.x < GATE_BOX.x-11 || p.x > GATE_BOX.x+GATE_BOX.w+11 ||
+                      p.y < GATE_BOX.y-11 || p.y > GATE_BOX.y+GATE_BOX.h+11) break;
+    }
     const g = el("g",{},gMarks);
     const active = k===trace.i;
     el("circle",{class:"stepnum-bg", cx:pt.x, cy:pt.y, r:active?9.5:7.5,
