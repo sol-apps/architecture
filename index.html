@@ -143,6 +143,7 @@ text{ font-family:"IBM Plex Mono",ui-monospace,monospace; fill:var(--ink); user-
 .semi{ opacity:.45 }
 .gatelab{ font-size:9px; font-weight:700; fill:var(--amber); letter-spacing:.06em }
 .dot{ pointer-events:none }
+.dot.live{ pointer-events:auto; cursor:pointer; transition:r .12s }
 @media (max-width: 980px){
   #side{ display:none }
   #panel{ width:300px }
@@ -189,6 +190,7 @@ text{ font-family:"IBM Plex Mono",ui-monospace,monospace; fill:var(--ink); user-
     </div>
     <div id="maphint">
       <span>hover to read · click to inspect · drag to pan · scroll to zoom</span>
+      <span class="lg"><b style="font-size:13px;line-height:0">•</b>&nbsp;dots are the payload — hover one</span>
       <span class="lg"><i style="border-color:var(--olive)"></i>no credential</span>
       <span class="lg"><i style="border-color:var(--blue)"></i>scoped / jailed credential</span>
       <span class="lg"><i style="border-color:var(--red)"></i>prod-writing credential</span>
@@ -538,6 +540,7 @@ const edgeById = Object.fromEntries(EDGES.map(e=>[e.id,e]));
 const zoneById = Object.fromEntries(ZONES.map(z=>[z.id,z]));
 const P = pts => pts.map(p=>p.join(",")).join(" ");
 
+const REDUCED = matchMedia("(prefers-reduced-motion:reduce)").matches;
 const svg = document.getElementById("world");
 const NS = "http://www.w3.org/2000/svg";
 const el = (tag, attrs={}, parent)=>{ const n=document.createElementNS(NS,tag);
@@ -698,6 +701,20 @@ function select(type,id){
   sel = {type, id, tab: sel.tab||"what"};
   for(const n of NODES) nodeEls[n.id].classList.toggle("sel", type==="node"&&id===n.id);
   document.querySelectorAll("#side .item").forEach(b=>b.classList.toggle("on", type==="node"&&b.dataset.n===id));
+  // The sidebar is taller than its viewport, so highlighting alone is invisible
+  // for anything below the fold — clicking a box on the map has to bring its
+  // row into view as well, or the two halves look unlinked.
+  if(type==="node"){
+    const row = side.querySelector('.item[data-n="'+id+'"]');
+    if(row){
+      // Measured against the pane rather than scrollIntoView(): the smooth
+      // variant silently no-ops in some embedded browsers, which left the
+      // highlighted row parked below the fold.
+      const r = row.getBoundingClientRect(), sr = side.getBoundingClientRect();
+      if(r.top < sr.top + 6)         side.scrollTop += r.top - sr.top - 6;
+      else if(r.bottom > sr.bottom-6) side.scrollTop += r.bottom - sr.bottom + 6;
+    }
+  }
   // highlight logic
   if(type==="node"){
     const near = new Set(edgesOf(id).map(e=>e.id));
@@ -831,7 +848,7 @@ addEventListener("keydown",ev=>{
 let pulseDot=null;
 function pulse(eid){
   if(pulseDot) pulseDot.remove();
-  if(matchMedia("(prefers-reduced-motion:reduce)").matches) return;
+  if(REDUCED) return;
   const E=edgeEls[eid], e=edgeById[eid];
   pulseDot = el("circle",{class:"dot", r:4, fill:CRED_COLORS[e.cls], stroke:"var(--paper)","stroke-width":1},gDots);
   const t0=performance.now(), D=900;
@@ -841,26 +858,56 @@ function pulse(eid){
     if(p<1 && pulseDot) requestAnimationFrame(f); })(t0);
 }
 
-/* ===================== ambient dots ===================== */
-const ambient=[];
-if(!matchMedia("(prefers-reduced-motion:reduce)").matches){
-  EDGES.forEach((e,i)=>{ if(e.thin) return;
-    const c=el("circle",{class:"dot", r:2.4, fill:CRED_COLORS[e.cls], "fill-opacity":.85},gDots);
-    ambient.push({e, c, t:(i*0.37)%1, sp:0.00009+((i*7)%5)*0.00002});
+/* ===================== payload dots =====================
+   These are not decoration. One dot per edge, and each one IS that edge's
+   payload — hover to read what it carries, click to open the edge.
+
+   Their motion is deterministic on purpose: every dot moves at the SAME
+   constant speed, departs on a fixed stagger derived from its index, and
+   rests out of sight once it arrives. Nothing here is random — the picture
+   is identical on every load, and a dot's position along a line always
+   means the same fraction of that journey.
+   ========================================================================= */
+const DOT_SPEED = 0.05;   // px per ms — identical on every edge
+const MIN_CYCLE = 3000;   // ms — a short hop rests instead of strobing (see below)
+const dots = [];
+if(!REDUCED){
+  const live = EDGES.filter(e=>!e.thin);
+  live.forEach((e,i)=>{
+    const E = edgeEls[e.id];
+    const c = el("circle",{class:"dot live", r:2.6, fill:CRED_COLORS[e.cls],
+      "fill-opacity":.9, stroke:"var(--paper)", "stroke-width":.8},gDots);
+    c.addEventListener("pointerenter",ev=>{ c.setAttribute("r",5.2); hoverEdge(e,true);
+      showTip(ev, `<b>${e.carries}</b><span class="c">${nodeById[e.from].label} → ${nodeById[e.to].label} · ${e.cred}</span>`); });
+    c.addEventListener("pointermove",moveTip);
+    c.addEventListener("pointerleave",()=>{ c.setAttribute("r",2.6); hoverEdge(e,false); hideTip(); });
+    c.addEventListener("click",ev=>{ ev.stopPropagation(); select("edge",e.id); });
+    // travel time follows from the shared speed; a dot that arrives early waits
+    // at its destination rather than immediately lapping — otherwise the short
+    // hops (the fast-forward push to prod is only ~50px) strobe several times a
+    // second and read as noise, while long ones drift for fourteen.
+    const travel = E.len / DOT_SPEED;
+    dots.push({e, c, E, travel, cycle: Math.max(travel, MIN_CYCLE), phase: i/live.length});
   });
-  let last=performance.now();
+  const T0 = performance.now();
   (function loop(now){
-    const dt=now-last; last=now;
-    for(const a of ambient){
-      const dimmed = a.c && edgeEls[a.e.id].g.classList.contains("dim");
-      const traced = trace.on;
-      a.t=(a.t+a.sp*dt)%1;
-      const pt=edgeEls[a.e.id].path.getPointAtLength(edgeEls[a.e.id].len*a.t);
-      a.c.setAttribute("cx",pt.x); a.c.setAttribute("cy",pt.y);
-      a.c.setAttribute("fill-opacity", dimmed||traced ? .06 : .85);
+    const ms = now - T0;
+    for(const d of dots){
+      const local = (ms + d.phase*d.cycle) % d.cycle;
+      const flying = local < d.travel;
+      if(flying){
+        const pt = d.E.path.getPointAtLength(local * DOT_SPEED);
+        d.c.setAttribute("cx",pt.x); d.c.setAttribute("cy",pt.y);
+      }
+      // A dot is only as visible as the line it belongs to: dimmed out of a
+      // selection, and during a trace only the steps already walked stay lit.
+      const g = d.E.g;
+      const muted = g.classList.contains("dim") || (g.style.opacity !== "" && +g.style.opacity < 1);
+      d.c.setAttribute("fill-opacity", !flying ? 0 : (muted ? .07 : .9));
+      d.c.style.pointerEvents = (flying && !muted) ? "auto" : "none";
     }
     requestAnimationFrame(loop);
-  })(last);
+  })(T0);
 }
 
 /* ===================== boot ===================== */
