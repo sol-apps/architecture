@@ -7,13 +7,19 @@
 <meta name="description" content="An inspectable map of the greenlight pipeline: what lives on the laptop, in each GitHub org, and on prod — and which credential authorises every line between them.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🟩%3C/text%3E%3C/svg%3E">
 <style>
 :root{
-  --paper:#e6e1c5; --paper2:#ece8d0; --panel:#efebd6; --ink:#33321f; --mut:#807c5e;
+  --paper:#e6e1c5; --paper2:#ece8d0; --panel:#efebd6; --ink:#33321f;
+  /* --mut was #807c5e = 3.21:1 on paper, under AA at the 9-10px sizes it is
+     used at. #5f5c46 measures 5.1:1. */
+  --mut:#5f5c46;
   --line:#4a4936; --faint:#c9c4a4;
-  --red:#a63d2c; --blue:#3d648f; --olive:#6f7d4a; --amber:#a5731f; --grn:#4a7a52;
+  --red:#a63d2c; --blue:#3d648f; --olive:#6f7d4a; --amber:#8a5f13; --grn:#4a7a52;
+  /* One type scale. Everything picks a step; nothing invents a half pixel. */
+  --t-micro:10px; --t-ui:11.5px; --t-body:13.5px; --t-lead:15px; --t-title:19px;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
 }
 *{margin:0;box-sizing:border-box}
 html,body{height:100%}
@@ -28,17 +34,18 @@ code{font-size:.92em; background:var(--paper2); border:1px solid var(--faint); b
 /* ---------- top bar ---------- */
 header{
   flex:none; display:flex; flex-wrap:wrap; align-items:stretch; border-bottom:1.5px solid var(--line);
-  background:var(--paper); font-size:11px; user-select:none;
+  background:var(--paper); font-size:var(--t-ui); user-select:none;
 }
-@media (max-width:1420px){ header .cell.opt{ display:none } }
+@media (max-width:1500px){ header .cell.opt2{ display:none } }
+@media (max-width:1230px){ header .cell.opt{ display:none } }
 header .cell{ border-right:1.5px solid var(--line); padding:7px 11px; display:flex; flex-direction:column; justify-content:center; white-space:nowrap; }
-header .cell .k{ font-size:9px; letter-spacing:.12em; color:var(--mut); text-transform:uppercase }
+header .cell .k{ font-size:var(--t-micro); letter-spacing:.12em; color:var(--mut); text-transform:uppercase }
 header .cell .v{ font-weight:600 }
 header .brand .v{ font-weight:700 }
 header .spacer{ flex:1; border-right:0 }
-header .btns{ display:flex; align-items:center; gap:8px; padding:0 12px; }
+header .btns{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:6px 12px; }
 .btn{
-  font:inherit; font-size:10px; font-weight:600; letter-spacing:.06em; cursor:pointer;
+  font:inherit; font-size:var(--t-micro); font-weight:600; letter-spacing:.06em; cursor:pointer;
   color:var(--ink); background:var(--paper2); border:1.5px solid var(--line); padding:6px 10px;
 }
 .btn:hover{ background:var(--ink); color:var(--paper) }
@@ -55,16 +62,16 @@ main{ flex:1; display:flex; min-height:0 }
   background:var(--paper); padding-bottom:20px;
 }
 #side .grp{ border-bottom:1px solid var(--faint); padding:10px 0 8px }
-#side .grp>.gl{ padding:0 14px 6px; font-size:9px; letter-spacing:.14em; color:var(--mut); text-transform:uppercase; display:flex; justify-content:space-between }
+#side .grp>.gl{ padding:0 14px 6px; font-size:var(--t-micro); letter-spacing:.14em; color:var(--mut); text-transform:uppercase; display:flex; justify-content:space-between }
 #side .grp>.gl i{ font-style:normal }
 #side button.item{
-  display:flex; width:100%; text-align:left; font:inherit; font-size:11px; gap:8px; align-items:center;
-  background:none; border:0; border-left:3px solid transparent; padding:4px 14px 4px 11px; cursor:pointer; color:var(--ink);
+  display:flex; width:100%; text-align:left; font:inherit; font-size:var(--t-ui); gap:8px; align-items:center;
+  background:none; border:0; border-left:3px solid transparent; padding:5px 14px 5px 11px; cursor:pointer; color:var(--ink);
 }
 #side button.item:hover{ background:var(--paper2) }
 #side button.item.on{ border-left-color:var(--red); background:var(--paper2); font-weight:600 }
 #side button.item .sw{ flex:none; width:8px; height:8px; border:1px solid var(--line); }
-#side button.item small{ margin-left:auto; color:var(--mut); font-size:9px }
+#side button.item small{ margin-left:auto; color:var(--mut); font-size:var(--t-micro) }
 
 /* map */
 #map{ flex:1; position:relative; min-width:0; background:var(--paper);
@@ -73,7 +80,7 @@ main{ flex:1; display:flex; min-height:0 }
 #map svg.panning{ cursor:grabbing }
 #zoomui{ position:absolute; top:10px; right:10px; display:flex; flex-direction:column; gap:4px }
 #zoomui .btn{ width:28px; padding:4px 0; text-align:center }
-#maphint{ position:absolute; left:0; right:0; bottom:0; padding:5px 12px; font-size:9.5px; letter-spacing:.08em;
+#maphint{ position:absolute; left:0; right:0; bottom:0; padding:6px 12px; font-size:var(--t-micro); letter-spacing:.06em;
   color:var(--mut); border-top:1px solid var(--faint); background:color-mix(in srgb, var(--paper) 88%, transparent);
   display:flex; gap:18px; flex-wrap:wrap; align-items:center }
 #maphint .lg{ display:flex; align-items:center; gap:5px }
@@ -81,32 +88,36 @@ main{ flex:1; display:flex; min-height:0 }
 
 /* trace strip */
 #tracebar{ position:absolute; left:12px; top:10px; display:none; align-items:center; gap:8px;
-  background:var(--panel); border:1.5px solid var(--line); padding:6px 10px; font-size:10px; max-width:min(520px, 70%); }
+  background:var(--panel); border:1.5px solid var(--line); padding:6px 10px; font-size:var(--t-micro); max-width:min(520px, 70%); }
 #tracebar.on{ display:flex }
 #tracebar .tt{ font-weight:700; letter-spacing:.06em }
 #tracebar .st{ color:var(--mut) }
 
 /* detail panel */
-#panel{ flex:none; width:352px; border-left:1.5px solid var(--line); background:var(--panel);
-  overflow-y:auto; padding:16px 18px 30px }
-#panel h2{ font-size:14px; font-weight:700; line-height:1.35; margin-bottom:2px }
-#panel .sub{ font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--mut); margin-bottom:12px }
+/* Prose gets the proportional companion to the mono (same superfamily, so the
+   drawing's voice is unchanged) and a column wide enough to hold 55-65
+   characters — the risk notes are 200-word paragraphs, not labels. */
+#panel{ flex:none; width:clamp(340px, 27vw, 470px); border-left:1.5px solid var(--line); background:var(--panel);
+  overflow-y:auto; padding:18px 22px 34px }
+#panel h2{ font-size:var(--t-title); font-weight:700; line-height:1.25; margin-bottom:3px; letter-spacing:-.01em }
+#panel .sub{ font-size:var(--t-micro); letter-spacing:.1em; text-transform:uppercase; color:var(--mut); margin-bottom:14px }
+#panel .bd{ font-family:var(--sans); font-size:var(--t-body); line-height:1.62 }
+#panel .bd p{ margin-bottom:11px }
 #panel .tabs{ display:flex; gap:0; margin:10px 0 12px; border:1.5px solid var(--line) }
-#panel .tabs button{ flex:1; font:inherit; font-size:9.5px; font-weight:600; letter-spacing:.08em; padding:5px 0;
+#panel .tabs button{ flex:1; font:inherit; font-size:var(--t-micro); font-weight:600; letter-spacing:.08em; padding:5px 0;
   background:var(--paper2); color:var(--ink); border:0; border-right:1.5px solid var(--line); cursor:pointer }
 #panel .tabs button:last-child{ border-right:0 }
 #panel .tabs button.on{ background:var(--ink); color:var(--paper) }
-#panel .bd p{ margin-bottom:10px }
 #panel .bd p:last-child{ margin-bottom:0 }
 #panel .mark{ background:var(--ink); color:var(--paper); padding:0 4px }
 #panel .markr{ background:var(--red); color:var(--paper); padding:0 4px }
-#panel .credbox{ border:1.5px solid var(--line); background:var(--paper2); padding:8px 10px; font-size:11px; margin:12px 0 }
-#panel .credbox .k{ font-size:9px; letter-spacing:.12em; color:var(--mut); text-transform:uppercase }
+#panel .credbox{ border:1.5px solid var(--line); background:var(--paper2); padding:9px 11px; font-size:var(--t-ui); margin:13px 0; line-height:1.5 }
+#panel .credbox .k{ font-size:var(--t-micro); letter-spacing:.12em; color:var(--mut); text-transform:uppercase }
 #panel ul{ margin:0 0 10px 16px }
-#panel li{ margin-bottom:6px }
+#panel li{ margin-bottom:7px }
 #panel .rel{ margin-top:14px; border-top:1px solid var(--faint); padding-top:10px }
-#panel .rel .k{ font-size:9px; letter-spacing:.12em; color:var(--mut); text-transform:uppercase; display:block; margin-bottom:6px }
-#panel .rel button{ display:block; width:100%; text-align:left; font:inherit; font-size:10.5px; background:none;
+#panel .rel .k{ font-size:var(--t-micro); letter-spacing:.12em; color:var(--mut); text-transform:uppercase; display:block; margin-bottom:6px }
+#panel .rel button{ display:block; width:100%; text-align:left; font:inherit; font-size:var(--t-ui); background:none;
   border:0; border-left:2px solid var(--faint); padding:2px 8px; margin-bottom:3px; cursor:pointer; color:var(--ink) }
 #panel .rel button:hover{ border-left-color:var(--red); background:var(--paper2) }
 #panel .stepnav{ display:flex; gap:8px; margin-top:14px }
@@ -120,41 +131,69 @@ main{ flex:1; display:flex; min-height:0 }
 /* ---------- svg pieces ---------- */
 text{ font-family:"IBM Plex Mono",ui-monospace,monospace; fill:var(--ink); user-select:none }
 .zfloor{ fill:var(--paper2); fill-opacity:.55; stroke:var(--line); stroke-width:1.2; stroke-dasharray:5 4 }
-.zlab{ font-size:12.5px; font-weight:700; letter-spacing:.12em }
-.zsub{ font-size:9px; fill:var(--mut); letter-spacing:.04em }
+/* Every piece of map text is painted with a paper-coloured halo underneath
+   (paint-order puts the stroke behind the fill), because cubes stand 22-57px
+   proud of the ground plane and WILL cross their neighbours' captions. */
+.zlab,.zsub,.nl,.gatelab,.stepnum{ paint-order:stroke fill;
+  stroke:var(--paper); stroke-width:3.4px; stroke-linejoin:round; stroke-linecap:round; }
+.zlab{ font-size:13px; font-weight:700; letter-spacing:.12em }
+.zsub{ font-size:var(--t-micro); fill:var(--mut); letter-spacing:.04em }
 .node{ cursor:pointer }
 .node .ftop{ fill:var(--panel); stroke:var(--line); stroke-width:1.3 }
 .node .fl{ fill:url(#hatchA); stroke:var(--line); stroke-width:1.3 }
 .node .fr{ fill:url(#hatchB); stroke:var(--line); stroke-width:1.3 }
 .node.actor .ftop{ fill:var(--paper) }
-.node text.nl{ font-size:10.5px; font-weight:600; text-anchor:middle }
-.node text.nk{ font-size:7.5px; fill:var(--mut); text-anchor:middle }
+.nl{ font-size:11px; font-weight:600; text-anchor:middle }
 .node.sel .ftop{ fill:var(--ink) }
-.node.sel .badge{ fill:var(--paper) }
 .node:hover .ftop{ fill:#f6f2dc }
 .node.sel:hover .ftop{ fill:var(--ink) }
-.node .badge{ font-size:8px; font-weight:700; text-anchor:middle; pointer-events:none }
-.node.sel .nl{ fill:var(--red) }
-.edge{ fill:none; stroke-width:1.6; cursor:pointer }
-.edge.hit{ stroke:transparent; stroke-width:11 }
-.edge.aux{ stroke-dasharray:4 4 }
-.edge.hl{ stroke-width:3 }
+.badge{ font-size:8.5px; font-weight:700; text-anchor:middle; pointer-events:none }
+.ntext.sel .nl{ fill:var(--red) }
+.ntext.sel .badge{ fill:var(--paper) }
+/* Text never intercepts a click: a caption hanging over a neighbouring cube
+   must not steal that cube's hit area. */
+/* Zone captions and trace numbers stay inert; a node's own name is a click
+   target for it — measured to overlap no other cube, so it steals nothing. */
+.zlab,.zsub,.stepnum,.gatemark{ pointer-events:none }
+.ntext{ cursor:pointer }
+/* Line WEIGHT and DASH carry the credential class as well as hue, so the
+   drawing still parses under deuteranopia and in greyscale — and so the one
+   prod-writing line in the whole system does not look like the other 25. */
+.edge{ fill:none; cursor:pointer }
+.edge.hit{ stroke:transparent; stroke-width:12 }
+.edge.aux{ stroke-opacity:.6 }
+.edge.hl{ stroke-opacity:1 }
+.edge.casing{ stroke:var(--paper); stroke-opacity:.9 }
 .dim{ opacity:.13 }
 .semi{ opacity:.45 }
-.gatelab{ font-size:9px; font-weight:700; fill:var(--amber); letter-spacing:.06em }
+.gatelab{ font-size:12px; font-weight:700; fill:var(--red); letter-spacing:.08em; text-anchor:middle }
+.stepnum{ font-size:var(--t-micro); font-weight:700; fill:var(--ink); text-anchor:middle }
+.stepnum-bg{ fill:var(--paper); stroke:var(--line); stroke-width:1.2 }
 .dot{ pointer-events:none }
 .dot.live{ pointer-events:auto; cursor:pointer; transition:r .12s }
+/* Under 980px the sidebar used to be display:none. With the map click also
+   broken that left NO route to any node's detail on a phone or a narrowed
+   window — the entire what/how/risk corpus was unreachable. It now reflows
+   into a wrapping chip index below the panel and keeps every node one tap away. */
 @media (max-width: 980px){
-  #side{ display:none }
-  #panel{ width:300px }
-}
-@media (max-width: 700px){
   body{ overflow:auto }
   main{ flex-direction:column }
-  #map{ min-height:52vh; flex:none }
-  #panel{ width:auto; border-left:0; border-top:1.5px solid var(--line) }
-  header{ flex-wrap:wrap }
+  #map{ flex:none; height:58vh; min-height:360px; order:1 }
+  #panel{ width:auto; border-left:0; border-top:1.5px solid var(--line); order:2 }
+  #side{ width:auto; flex:none; border-right:0; border-top:1.5px solid var(--line);
+         order:3; overflow:visible; padding-bottom:8px }
+  #side .grp{ display:flex; flex-wrap:wrap; gap:6px; padding:11px 12px 12px }
+  #side .grp>.gl{ flex-basis:100%; padding:0 0 3px }
+  #side button.item{ width:auto; border:1.5px solid var(--faint); border-left-width:1.5px;
+                     padding:5px 9px; background:var(--paper2) }
+  #side button.item.on{ border-color:var(--red); border-left-color:var(--red) }
   header .cell{ border-bottom:1px solid var(--faint) }
+  #tracebar{ max-width:calc(100% - 24px) }
+}
+@media (max-width: 620px){
+  #map{ height:52vh; min-height:320px }
+  #maphint .lg{ display:none }
+  #maphint .lg.key{ display:flex }
 }
 @media (prefers-reduced-motion: reduce){ .dot{ display:none } }
 </style>
@@ -167,7 +206,7 @@ text{ font-family:"IBM Plex Mono",ui-monospace,monospace; fill:var(--ink); user-
   <div class="cell"><span class="k">machines</span><span class="v" id="cMachines">3 — laptop · preview · prod</span></div>
   <div class="cell"><span class="k">human gates</span><span class="v">1 — the PR review</span></div>
   <div class="cell opt"><span class="k">paths to prod</span><span class="v" id="cPaths">3 — all named below</span></div>
-  <div class="cell opt"><span class="k">prod-write creds in dev org</span><span class="v">0</span></div>
+  <div class="cell opt2"><span class="k">prod-write creds in dev org</span><span class="v">0</span></div>
   <div class="cell spacer"></div>
   <div class="btns">
     <button class="btn primary" data-flow="build">▶ new app</button>
@@ -190,13 +229,13 @@ text{ font-family:"IBM Plex Mono",ui-monospace,monospace; fill:var(--ink); user-
       <button class="btn" id="zfit">⌂</button>
     </div>
     <div id="maphint">
-      <span>hover to read · click to inspect · drag to pan · scroll to zoom</span>
+      <span>click a box or line to inspect · drag to pan · scroll to zoom</span>
       <span class="lg"><b style="font-size:13px;line-height:0">•</b>&nbsp;dots are the payload — hover one</span>
-      <span class="lg"><i style="border-color:var(--olive)"></i>no credential</span>
-      <span class="lg"><i style="border-color:var(--blue)"></i>scoped / jailed credential</span>
-      <span class="lg"><i style="border-color:var(--red)"></i>prod-writing credential</span>
-      <span class="lg"><i style="border-color:var(--amber)"></i>human action</span>
-      <span class="lg"><i style="border-color:var(--mut); border-top-style:dashed"></i>legacy / admin lane</span>
+      <span class="lg key"><i style="border-color:var(--olive);border-top-width:1.5px"></i>no credential</span>
+      <span class="lg key"><i style="border-color:var(--blue);border-top-style:dashed"></i>scoped / jailed</span>
+      <span class="lg key"><i style="border-color:var(--red);border-top-width:4px"></i>prod-writing</span>
+      <span class="lg key"><i style="border-color:var(--amber);border-top-style:dotted;border-top-width:3px"></i>human action</span>
+      <span class="lg"><i style="border-color:var(--mut);opacity:.6"></i>faded = admin / legacy lane</span>
     </div>
   </div>
   <aside id="panel"></aside>
@@ -341,6 +380,10 @@ const NODES = [
 ];
 
 const CRED_COLORS = { none:"var(--olive)", scoped:"var(--blue)", prodwrite:"var(--red)", human:"var(--amber)" };
+// Hue is not the only channel: each class also has a weight and a dash, so the
+// diagram survives colour-blindness, greyscale printing, and a bad projector.
+const CRED_WIDTH = { none:1.4, scoped:1.8, human:1.8, prodwrite:3.4 };
+const CRED_DASH  = { none:"", scoped:"7 4", human:"1.5 4", prodwrite:"" };
 const CRED_LABEL = {
   none:"no credential (anonymous / local)",
   scoped:"scoped or jailed credential",
@@ -534,7 +577,7 @@ ${laptopHidden
 </div>`;
 
 /* ===================== geometry ===================== */
-const IX=30, IY=15, ZH=22;
+const IX=30, IY=21, ZH=24;
 const uv2g = (u,v)=>[(v+u)/2,(v-u)/2];
 const iso  = (gx,gy,z=0)=>[(gx-gy)*IX, (gx+gy)*IY - z*ZH];
 const isoUV= (u,v,z=0)=>{ const [gx,gy]=uv2g(u,v); return iso(gx,gy,z); };
@@ -566,6 +609,8 @@ const view = el("g",{},svg);          // pan/zoom container
 const gZones = el("g",{},view);
 const gEdges = el("g",{},view);
 const gNodes = el("g",{},view);
+const gLabels= el("g",{},view);   // ALL map text, painted above every solid
+const gMarks = el("g",{},view);
 const gDots  = el("g",{},view);
 
 /* zones */
@@ -574,8 +619,8 @@ for(const z of ZONES){
   const c = [isoUV(z.u0,z.v0), isoUV(z.u1,z.v0), isoUV(z.u1,z.v1), isoUV(z.u0,z.v1)];
   el("polygon",{class:"zfloor", points:P(c)},g);
   const [lx,ly] = isoUV(z.u0,z.v0);
-  const t1 = el("text",{class:"zlab",x:lx+2,y:ly-17},g); t1.textContent = z.label;
-  const t2 = el("text",{class:"zsub",x:lx+2,y:ly-6},g); t2.textContent = z.sub;
+  const t1 = el("text",{class:"zlab","data-zlab":z.id,x:lx+2,y:ly-22},gLabels); t1.textContent = z.label;
+  const t2 = el("text",{class:"zsub","data-zlab":z.id,x:lx+2,y:ly-8},gLabels); t2.textContent = z.sub;
 }
 
 /* edge geometry: floor anchor per node = its (u,v) */
@@ -597,14 +642,24 @@ const edgeEls = {};
 for(const e of EDGES){
   const col = CRED_COLORS[e.cls];
   const g = el("g",{"data-e":e.id},gEdges);
-  const path = el("path",{class:"edge"+(e.aux?" aux":""), d:edgePath(e),
-    stroke:col, "stroke-width": e.thin?1:(e.gate?2.6:1.6), "marker-end":`url(#ar_${e.cls})`},g);
-  const hit = el("path",{class:"edge hit", d:edgePath(e)},g);
+  const d = edgePath(e);
+  const w = e.thin ? 1.1 : (e.gate ? 3.6 : CRED_WIDTH[e.cls]);
+  // The single prod-writing line gets a paper casing so it reads as the
+  // trunk road it is, at any zoom, even printed in black and white.
+  if(e.cls==="prodwrite" || e.gate)
+    el("path",{class:"edge casing", d, "stroke-width":w+4},g);
+  const path = el("path",{class:"edge"+(e.aux?" aux":""), d,
+    stroke:col, "stroke-width":w, "stroke-dasharray":CRED_DASH[e.cls] || "none",
+    "marker-end":`url(#ar_${e.cls})`},g);
+  const hit = el("path",{class:"edge hit", d},g);
   edgeEls[e.id] = {g, path, hit, len:path.getTotalLength()};
   if(e.gate){
     const pt = path.getPointAtLength(path.getTotalLength()*0.5);
-    const t = el("text",{class:"gatelab", x:pt.x, y:pt.y-8, "text-anchor":"middle"},g);
-    t.textContent = "⛨ THE HUMAN GATE";
+    const gl = el("g",{class:"gatemark"},gLabels);
+    el("rect",{x:pt.x-84, y:pt.y-26, width:168, height:19, rx:2,
+      fill:"var(--paper)", stroke:"var(--red)", "stroke-width":1.4},gl);
+    const t = el("text",{class:"gatelab", x:pt.x, y:pt.y-12},gl);
+    t.textContent = "\u26e8 THE HUMAN GATE";
   }
   hit.addEventListener("pointerenter",ev=>{ hoverEdge(e,true); showTip(ev, `<b>${e.label}</b><span class="c">${e.cred}</span>`); });
   hit.addEventListener("pointermove",moveTip);
@@ -614,7 +669,7 @@ for(const e of EDGES){
 function hoverEdge(e,on){ edgeEls[e.id].path.classList.toggle("hl",on || (sel.type==="edge"&&sel.id===e.id)); }
 
 /* nodes (isometric prisms) — painter's order: by u+v (screen depth) */
-const nodeEls = {};
+const nodeEls = {}, labelEls = {};
 const sorted = [...NODES].sort((a,b)=>(a.v)-(b.v));
 for(const n of sorted){
   const [gx,gy] = uv2g(n.u,n.v);
@@ -626,10 +681,22 @@ for(const n of sorted){
   el("polygon",{class:"fl", points:P([F(c4),F(c3),T(c3),T(c4)])},g);
   el("polygon",{class:"fr", points:P([F(c3),F(c2),T(c2),T(c3)])},g);
   el("polygon",{class:"ftop", points:P([T(c1),T(c2),T(c3),T(c4)])},g);
+  // Badge and label travel together in the text layer, painted above every
+  // solid — a cube drawn later must never bury an earlier cube's name.
+  const tg = el("g",{class:"ntext"},gLabels);
   const [tx,ty] = iso(gx,gy,h);
-  const bd = el("text",{class:"badge", x:tx, y:ty+3},g); bd.textContent = n.badge||"";
-  const [lx,ly] = iso(gx,gy,0);
-  const lab = el("text",{class:"nl", x:lx, y:ly+16},g); lab.textContent = n.label;
+  const bd = el("text",{class:"badge", x:tx, y:ty+3},tg); bd.textContent = n.badge||"";
+  // The label used to sit at the base CENTRE, which is inside the footprint —
+  // so every cube printed its own name over itself. Hang it off the lowest
+  // vertex of the base diamond instead, clear of the solid.
+  const [lx] = iso(gx,gy,0);
+  const [,baseY] = iso(gx+w/2, gy+d/2, 0);
+  const lab = el("text",{class:"nl", x:lx, y:baseY+13},tg); lab.textContent = n.label;
+  labelEls[n.id] = tg;
+  tg.addEventListener("click",ev=>{ ev.stopPropagation(); select("node",n.id); });
+  tg.addEventListener("pointerenter",ev=>showTip(ev,`<b>${n.label}</b><span class="c">${zoneById[n.zone].label}</span>`));
+  tg.addEventListener("pointermove",moveTip);
+  tg.addEventListener("pointerleave",hideTip);
   nodeEls[n.id] = g;
   g.addEventListener("pointerenter",ev=>showTip(ev,`<b>${n.label}</b><span class="c">${zoneById[n.zone].label}</span>`));
   g.addEventListener("pointermove",moveTip);
@@ -641,10 +708,16 @@ for(const n of sorted){
 /* ===================== pan / zoom ===================== */
 let vb = null;
 function fit(){
-  const bb = view.getBBox();
-  const pad = 30;
-  vb = [bb.x-pad, bb.y-pad, bb.width+pad*2, bb.height+pad*2];
-  apply();
+  const bb = view.getBBox(), pad = 34;
+  let x=bb.x-pad, y=bb.y-pad, w=bb.width+pad*2, h=bb.height+pad*2;
+  // preserveAspectRatio=meet letterboxes a 2.3:1 drawing inside a near-square
+  // container — measured at 35% of the canvas actually used. Grow the viewBox
+  // on the short axis to the container's own aspect so the map fills it.
+  const r = svg.getBoundingClientRect();
+  const ca = (r.width||1)/(r.height||1);
+  if(w/h < ca){ const nw=h*ca; x-=(nw-w)/2; w=nw; }
+  else        { const nh=w/ca; y-=(nh-h)/2; h=nh; }
+  vb=[x,y,w,h]; apply();
 }
 function apply(){ svg.setAttribute("viewBox", vb.join(" ")); }
 function zoom(f, cx, cy){
@@ -655,15 +728,31 @@ function zoom(f, cx, cy){
   apply();
 }
 svg.addEventListener("wheel",ev=>{ ev.preventDefault(); zoom(ev.deltaY>0?1.12:1/1.12, ev.clientX, ev.clientY); },{passive:false});
-let pan=null;
-svg.addEventListener("pointerdown",ev=>{ pan={x:ev.clientX,y:ev.clientY,vb:[...vb]}; svg.classList.add("panning"); svg.setPointerCapture(ev.pointerId); });
+// Capture is taken on the first MOVE past a threshold, never on press.
+// Capturing on pointerdown retargets the following click to the <svg> itself,
+// so a node's own click listener never fired and the background handler below
+// then deselected — every box and line on the map was dead to the mouse while
+// the keyboard and the sidebar still worked.
+const DRAG_MIN = 4;   // px before a press counts as a pan rather than a click
+let pan=null, dragged=false;
+svg.addEventListener("pointerdown",ev=>{ pan={x:ev.clientX,y:ev.clientY,vb:[...vb],id:ev.pointerId}; dragged=false; });
 svg.addEventListener("pointermove",ev=>{ if(!pan) return;
+  const dx=ev.clientX-pan.x, dy=ev.clientY-pan.y;
+  if(!dragged){
+    if(Math.hypot(dx,dy) < DRAG_MIN) return;
+    dragged=true; svg.classList.add("panning");
+    try{ svg.setPointerCapture(pan.id); }catch(_){}
+  }
   const r=svg.getBoundingClientRect();
-  vb[0]=pan.vb[0]-(ev.clientX-pan.x)/r.width*vb[2];
-  vb[1]=pan.vb[1]-(ev.clientY-pan.y)/r.height*vb[3];
+  vb[0]=pan.vb[0]-dx/r.width*vb[2];
+  vb[1]=pan.vb[1]-dy/r.height*vb[3];
   apply(); });
-svg.addEventListener("pointerup",()=>{ pan=null; svg.classList.remove("panning"); });
-svg.addEventListener("click",ev=>{ if(ev.target===svg) select(null); });
+const endPan=()=>{ if(pan&&dragged){ try{ svg.releasePointerCapture(pan.id); }catch(_){} }
+  pan=null; svg.classList.remove("panning"); };
+svg.addEventListener("pointerup",endPan);
+svg.addEventListener("pointercancel",endPan);
+// A real drag ends with a click event too — swallow that one only.
+svg.addEventListener("click",ev=>{ if(dragged){ dragged=false; return; } if(ev.target===svg) select(null); });
 document.getElementById("zin").onclick=()=>{ const r=svg.getBoundingClientRect(); zoom(1/1.25, r.left+r.width/2, r.top+r.height/2); };
 document.getElementById("zout").onclick=()=>{ const r=svg.getBoundingClientRect(); zoom(1.25, r.left+r.width/2, r.top+r.height/2); };
 document.getElementById("zfit").onclick=fit;
@@ -702,7 +791,11 @@ function edgesOf(nid){ return EDGES.filter(e=>e.from===nid||e.to===nid); }
 function select(type,id){
   if(trace.on) stopTrace();
   sel = {type, id, tab: sel.tab||"what"};
-  for(const n of NODES) nodeEls[n.id].classList.toggle("sel", type==="node"&&id===n.id);
+  // A selection is addressable: #n/promoter, #e/e_promoter_prodrepo. replaceState
+  // rather than push, so inspecting ten boxes does not bury the back button.
+  try{ history.replaceState(null,"", type ? `#${type==="node"?"n":"e"}/${id}` : location.pathname+location.search); }catch(_){}
+  for(const n of NODES){ const on = type==="node"&&id===n.id;
+    nodeEls[n.id].classList.toggle("sel", on); labelEls[n.id].classList.toggle("sel", on); }
   document.querySelectorAll("#side .item").forEach(b=>b.classList.toggle("on", type==="node"&&b.dataset.n===id));
   // The sidebar is taller than its viewport, so highlighting alone is invisible
   // for anything below the fold — clicking a box on the map has to bring its
@@ -725,14 +818,16 @@ function select(type,id){
       E.g.classList.toggle("dim", !near.has(e.id));
       E.path.classList.toggle("hl", near.has(e.id)); }
     for(const n of NODES){ const touch = n.id===id || edgesOf(id).some(e=>e.from===n.id||e.to===n.id);
-      nodeEls[n.id].classList.toggle("semi", !touch); nodeEls[n.id].classList.remove("dim"); }
+      nodeEls[n.id].classList.toggle("semi", !touch); nodeEls[n.id].classList.remove("dim");
+      labelEls[n.id].classList.toggle("semi", !touch); }
     renderNode(nodeById[id]);
   } else if(type==="edge"){
     for(const e of EDGES){ const E=edgeEls[e.id];
       E.g.classList.toggle("dim", e.id!==id);
       E.path.classList.toggle("hl", e.id===id); }
     const e=edgeById[id];
-    for(const n of NODES) nodeEls[n.id].classList.toggle("semi", n.id!==e.from&&n.id!==e.to);
+    for(const n of NODES){ const touch = n.id===e.from||n.id===e.to;
+      nodeEls[n.id].classList.toggle("semi", !touch); labelEls[n.id].classList.toggle("semi", !touch); }
     renderEdge(e);
   } else {
     clearHl(); panel.innerHTML = overview();
@@ -740,7 +835,8 @@ function select(type,id){
 }
 function clearHl(){
   for(const e of EDGES){ edgeEls[e.id].g.classList.remove("dim"); edgeEls[e.id].path.classList.remove("hl"); }
-  for(const n of NODES){ nodeEls[n.id].classList.remove("semi","dim","sel"); }
+  for(const n of NODES){ nodeEls[n.id].classList.remove("semi","dim","sel");
+    labelEls[n.id].classList.remove("semi","dim","sel"); }
   document.querySelectorAll("#side .item").forEach(b=>b.classList.remove("on"));
 }
 
@@ -793,7 +889,8 @@ function startTrace(name){
   for(const e of EDGES) edgeEls[e.id].g.classList.toggle("dim", !inFlow.has(e.id));
   const touched = new Set();
   f.steps.forEach(s=>{ const e=edgeById[s[0]]; touched.add(e.from); touched.add(e.to); });
-  for(const n of NODES) nodeEls[n.id].classList.toggle("semi", !touched.has(n.id));
+  for(const n of NODES){ nodeEls[n.id].classList.toggle("semi", !touched.has(n.id));
+    labelEls[n.id].classList.toggle("semi", !touched.has(n.id)); }
   document.querySelectorAll("[data-flow]").forEach(b=>b.classList.toggle("primary", b.dataset.flow===name));
   tracebar.classList.add("on");
   stepTrace(1);
@@ -808,6 +905,7 @@ function stepTrace(dir){
     E.g.classList.toggle("dim", false);
     E.g.style.opacity = k<=trace.i ? 1 : .25;
   }
+  stepMarks(f);
   const e = edgeById[eid];
   tracebar.querySelector(".tt").textContent = f.title;
   tracebar.querySelector(".st").textContent = `step ${trace.i+1}/${f.steps.length}`;
@@ -832,6 +930,7 @@ function stepTrace(dir){
 }
 function stopTrace(){
   trace={on:false,flow:null,i:-1};
+  gMarks.textContent = "";
   tracebar.classList.remove("on");
   for(const e of EDGES) edgeEls[e.id].g.style.opacity="";
   clearHl();
@@ -839,13 +938,36 @@ function stopTrace(){
   panel.innerHTML = overview();
 }
 document.querySelectorAll("[data-flow]").forEach(b=>b.onclick=()=>startTrace(b.dataset.flow));
-document.getElementById("resetBtn").onclick=()=>{ stopTrace(); fit(); };
+document.getElementById("resetBtn").onclick=()=>{ stopTrace(); select(null); fit(); };
+document.getElementById("resetBtn").title="Clear the selection and refit the map. Leaves the laptop toggle alone.";
+// Without this a rotated phone keeps the portrait framing forever.
+let rt=null;
+addEventListener("resize",()=>{ clearTimeout(rt); rt=setTimeout(fit,160); });
+addEventListener("orientationchange",()=>setTimeout(fit,260));
 addEventListener("keydown",ev=>{
   if(!trace.on) return;
   if(ev.key==="ArrowRight"||ev.key==="Right"){ ev.preventDefault(); stepTrace(1); }
   else if(ev.key==="ArrowLeft"||ev.key==="Left"){ ev.preventDefault(); stepTrace(-1); }
   else if(ev.key==="Escape"||ev.key==="Esc"){ stopTrace(); }
 });
+
+/* Walked steps carry their ORDER on the map, not just in the panel — without a
+   number, an accumulating highlight says which lines took part but never in
+   which sequence, which is the whole point of a trace. */
+function stepMarks(f){
+  gMarks.textContent = "";
+  for(let k=0;k<=trace.i;k++){
+    const E = edgeEls[f.steps[k][0]];
+    const pt = E.path.getPointAtLength(E.len*0.5);
+    const g = el("g",{},gMarks);
+    const active = k===trace.i;
+    el("circle",{class:"stepnum-bg", cx:pt.x, cy:pt.y, r:active?9.5:7.5,
+      fill: active?"var(--red)":"var(--paper)"},g);
+    const t = el("text",{class:"stepnum", x:pt.x, y:pt.y+3.4,
+      fill: active?"var(--paper)":"var(--ink)"},g);
+    t.textContent = String(k+1);
+  }
+}
 
 /* one bright pulse along the active edge */
 let pulseDot=null;
@@ -882,7 +1004,8 @@ function setLaptop(hidden){
   laptopHidden = hidden;
   const off = hidden ? "none" : "";
   const zone = gZones.querySelector('[data-z="laptop"]'); if(zone) zone.style.display = off;
-  LAPTOP_NODES.forEach(id=>{ nodeEls[id].style.display = off; });
+  gLabels.querySelectorAll('[data-zlab="laptop"]').forEach(t=>{ t.style.display = off; });
+  LAPTOP_NODES.forEach(id=>{ nodeEls[id].style.display = off; labelEls[id].style.display = off; });
   LAPTOP_EDGES.forEach(id=>{ edgeEls[id].g.style.display = off; });
   const grp = side.querySelector('.grp[data-z="laptop"]'); if(grp) grp.style.display = off;
 
@@ -975,6 +1098,18 @@ const startHidden = (()=>{
   try{ return localStorage.getItem("gl_arch_laptop")==="hidden"; }catch(_){ return false; }
 })();
 setLaptop(startHidden);   // also does the initial fit()
+
+// #n/<node> or #e/<edge> opens straight onto that box or line.
+(()=>{
+  const m = /^#([ne])\/(.+)$/.exec(location.hash||"");
+  if(!m) return;
+  const type = m[1]==="n" ? "node" : "edge";
+  const id = decodeURIComponent(m[2]);
+  const known = type==="node" ? nodeById[id] : edgeById[id];
+  if(!known) return;
+  if(laptopHidden && (LAPTOP_NODES.has(id) || LAPTOP_EDGES.has(id))) setLaptop(false);
+  select(type, id);
+})();
 </script>
 </body>
 </html>

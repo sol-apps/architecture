@@ -16,6 +16,8 @@ credential that authorises it and coloured by how dangerous that credential is.
 Built for reasoning about the system, not just admiring it:
 
 - **Click any box or line** for what-it-does / how-it's-built / **risk** notes.
+  A selection is addressable — `#n/promoter`, `#e/e_promoter_prodrepo` — so you
+  can link someone straight to the piece you mean.
 - **Trace a flow** step by step: new app, change to an existing app, the legacy
   direct-push lane, and a schema change.
 - The one human gate — approving the PR — is marked on the map, because merging
@@ -26,6 +28,10 @@ Built for reasoning about the system, not just admiring it:
   the overview change with it, and the two flows that start there are disabled
   rather than silently truncated, so the reduced picture never overstates itself.
   The choice sticks, and `?nolaptop` shares it as a link.
+
+Line **weight and dash** carry the credential class alongside hue, so the drawing
+still parses in greyscale or with colour-blindness — the one prod-writing line in
+the system is the heaviest thing on the map, as it should be.
 
 The whole page is a single `index.html`; the diagram is generated from a data
 model at the top of the script, so editing the architecture doc means editing
