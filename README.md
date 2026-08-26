@@ -3,23 +3,22 @@ solhann_app: true
 slug: architecture
 title: Greenlight Architecture
 description: An inspectable map of the greenlight pipeline — every box on every machine, every line labelled with the credential that authorises it.
-emoji: 🟩
 ---
 
-# 🟩 Greenlight Architecture
+# Greenlight Architecture
 
 An inspectable, isometric map of how solhann.net works now that greenlight is the
-front door: three machines (laptop, preview box, prod), two GitHub orgs
-(`sol-forge` dev / `sol-apps` prod), and every line between them labelled with the
-credential that authorises it and coloured by how dangerous that credential is.
+front door: three machines (laptop, preview box, prod), one GitHub org (`sol-apps`),
+and every line between them labelled with the credential that authorises it and
+coloured by how dangerous that credential is.
 
 Built for reasoning about the system, not just admiring it:
 
 - **Click any box or line** for what-it-does / how-it's-built / **risk** notes.
-  A selection is addressable — `#n/promoter`, `#e/e_promoter_prodrepo` — so you
+  A selection is addressable — `#n/provisioner`, `#e/e_provisioner_env` — so you
   can link someone straight to the piece you mean.
 - **Trace a flow** step by step: new app, change to an existing app, the legacy
-  direct-push lane, and a schema change.
+  direct-push lane (now closed), and a schema change.
 - The one human gate — approving the PR — is marked on the map, because merging
   IS deploying.
 - **Hide the laptop** (button, top right) drops the owner's own machine — the
