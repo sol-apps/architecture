@@ -202,11 +202,11 @@ text{ font-family:"IBM Plex Mono",ui-monospace,monospace; fill:var(--ink); user-
 
 <header>
   <div class="cell brand"><span class="k">solhann.net</span><span class="v">greenlight · architecture</span></div>
-  <div class="cell"><span class="k">github orgs</span><span class="v">2 — dev / prod</span></div>
+  <div class="cell"><span class="k">github org</span><span class="v">1 — sol-apps</span></div>
   <div class="cell"><span class="k">machines</span><span class="v" id="cMachines">3 — laptop · preview · prod</span></div>
   <div class="cell"><span class="k">human gates</span><span class="v">1 — the PR review</span></div>
-  <div class="cell opt"><span class="k">paths to prod</span><span class="v" id="cPaths">3 — all named below</span></div>
-  <div class="cell opt2"><span class="k">prod-write creds in dev org</span><span class="v">0</span></div>
+  <div class="cell opt"><span class="k">paths to prod</span><span class="v" id="cPaths">2 — all named below</span></div>
+  <div class="cell opt2"><span class="k">prod creds an agent branch can read</span><span class="v">0</span></div>
   <div class="cell spacer"></div>
   <div class="btns">
     <button class="btn primary" data-flow="build">▶ new app</button>
@@ -221,7 +221,7 @@ text{ font-family:"IBM Plex Mono",ui-monospace,monospace; fill:var(--ink); user-
 <main>
   <aside id="side"></aside>
   <div id="map">
-    <svg id="world" role="img" aria-label="Isometric map of the greenlight pipeline across the laptop, two GitHub orgs, the preview box and the prod box."></svg>
+    <svg id="world" role="img" aria-label="Isometric map of the greenlight pipeline across the laptop, the sol-apps GitHub org, the preview box and the prod box."></svg>
     <div id="tracebar"><span class="tt"></span><span class="st"></span></div>
     <div id="zoomui">
       <button class="btn" id="zin">+</button>
@@ -255,11 +255,11 @@ const ZONES = [
     u0:-17.6, v0:3.0, u1:-10.2, v1:12.4 },
   { id:"sandbox", label:"AGENT SANDBOX", sub:"Anthropic-hosted, ephemeral",
     u0:-6.6, v0:-0.6, u1:1.0, v1:4.2 },
-  { id:"forge",   label:"GITHUB · SOL-FORGE", sub:"dev org — everything here is presumed unreviewed",
+  { id:"forge",   label:"GITHUB · SOL-APPS", sub:"public app repos — the agent works on branches here",
     u0:2.8, v0:-0.6, u1:15.9, v1:9.6 },
   { id:"preview", label:"PREVIEW BOX", sub:"greenlightdev.solhann.net — holds nothing worth stealing",
     u0:10.2, v0:11.6, u1:15.9, v1:16.0 },
-  { id:"apps",    label:"GITHUB · SOL-APPS", sub:"prod org — main HEAD is the promotion record",
+  { id:"apps",    label:"SOL-APPS · CONTROL PLANE", sub:"private repos — the bot has no access to any of these",
     u0:2.8, v0:18.0, u1:15.9, v1:27.2 },
   { id:"prod",    label:"PROD BOX", sub:"solhann.net — one server, every app in its own jail",
     u0:-9.4, v0:7.6, u1:1.6, v1:27.2 },
@@ -272,10 +272,10 @@ const NODES = [
   { id:"builder", zone:"people", u:-15.4, v:5.2, w:1.2, d:1.2, h:1.5, kind:"actor", label:"BUILDER", badge:"B",
     what:"Anyone allowed onto greenlight who wants an app to exist. They describe it in the build wizard, answer the agent's questions, and wait. They never touch git, GitHub, or a server.",
     how:"A logged-in browser session on greenlight.solhann.net (PocketBase auth, token in localStorage). The wizard is <code>build.html</code>; a change to an existing app starts from the app's overlay on the shelf, which opens <code>build.html?change=&lt;slug&gt;</code>.",
-    risk:"A malicious builder can burn agent-session money and produce a hostile draft — but every output lands in sol-forge behind the review gate, and drafts are previewed on a box with nothing on it. A builder cannot reach prod." },
+    risk:"A malicious builder can burn agent-session money and produce a hostile draft — but every output lands on a BRANCH behind the review gate, and drafts are previewed on a box with nothing on it. A builder cannot reach prod." },
   { id:"reviewer", zone:"people", u:-12.4, v:8.2, w:1.4, d:1.4, h:2.2, kind:"actor", label:"REVIEWER", badge:"☑",
     what:"<span class='markr'>The only gate in the system.</span> Reads the PR, tries the running preview, and approves on GitHub. Approving is not a step before a deploy — merging IS deploying. Nobody gets a second look between the merge and production.",
-    how:"Branch protection on every sol-forge app repo: one approving review, <code>enforce_admins</code> on, and the required <code>greenlight-lint</code> check where <code>lint.yml</code> exists. The bot cannot approve its own PR.",
+    how:"Branch protection on every app repo: one approving review, <code>enforce_admins</code> on, merging restricted to a named human, and the required <code>greenlight-lint</code> check where <code>lint.yml</code> exists. The bot cannot approve its own PR.",
     risk:"The reviewer's GitHub account is the most valuable credential anywhere in this system — more than any token. If it is compromised, the gate is gone. Everything else is built so that this is the ONLY thing that has to stay true." },
   { id:"visitor", zone:"people", u:-15.4, v:10.6, w:1.2, d:1.2, h:1.2, kind:"actor", label:"VISITOR", badge:"V",
     what:"Anyone using a finished app at <code>&lt;slug&gt;.solhann.net</code>.",
@@ -286,49 +286,49 @@ const NODES = [
   { id:"agent", zone:"sandbox", u:-2.8, v:1.8, w:1.9, d:1.6, h:1.9, label:"MANAGED AGENT", badge:"AI",
     what:"An Anthropic managed-agent session, started by greenlight's server hooks. It scaffolds from the app template (or clones the existing app for a change), writes the code, pushes a branch, and opens the pull request.",
     how:"Its system prompt tells it the truth about the pipeline: a human has to approve the PR, and approving it puts it live. For a change request, spec.json updates travel in the same PR as the code.",
-    risk:"The sandbox holds the bot's PAT for the length of a session. That PAT has Contents + Pull-requests on sol-forge only — no Workflows permission, so even a fully hijacked agent cannot edit the workflow files that read the dispatch secrets, cannot approve its own PR, and holds nothing that writes to sol-apps or prod." },
+    risk:"The sandbox holds the bot's PAT for the length of a session. That PAT has Contents + Pull-requests on app repos only — no Workflows permission, so even a fully hijacked agent cannot edit the workflow files that read the dispatch secrets, cannot approve its own PR, cannot push main, and holds nothing that reaches prod." },
 
-  /* ---- sol-forge ---- */
-  { id:"forge-repo", zone:"forge", u:5.8, v:4.6, w:2.2, d:1.9, h:2.2, label:"APP REPO ‹slug›", badge:"PR",
-    what:"The agent's workspace: one repo per app, and the repo name is the slug is the subdomain. All work arrives as pull-request branches; main only moves when a human merges.",
-    how:"Created by greenlight's hooks from the app template, then branch-protected. Carries <code>spec.json</code> (the app's contract, tier included) and four owner-guarded workflows copied from the template.",
-    risk:"Two independent guards keep an unreviewed app off prod, both born from a real incident where generating a repo promoted a bare scaffold: the template's promote.yml skips the push that CREATES main (<code>!github.event.created</code>), and the promoter refuses any repo with no spec.json." },
+  /* ---- sol-apps: the public app repos ---- */
+  { id:"app-repo", zone:"forge", u:5.8, v:4.6, w:2.2, d:1.9, h:2.2, label:"APP REPO ‹slug›", badge:"PR",
+    what:"<span class='mark'>The only copy.</span> One repo per app, and the repo name is the slug is the subdomain. The agent works on branches; main moves only when a human merges — and that merge IS the deploy.",
+    how:"Created by the provisioner's <code>create-app.yml</code> at DRAFT time and protected before anything can write to it. Carries <code>spec.json</code> (the app's contract, tier included) and three workflows from the template: deploy, lint, preview.",
+    risk:"Until 2026-08-26 there were two copies in two orgs and a promoter mirroring between them; the org boundary was what kept the agent away from prod credentials. There is no boundary now, so the repo carries its own: protected main, and a <code>prod</code> environment a branch run cannot enter." },
+  { id:"prod-env", zone:"forge", u:5.6, v:7.8, w:2.1, d:1.6, h:1.4, label:"PROD ENVIRONMENT", badge:"🔒",
+    what:"<span class='mark'>What replaced the org boundary.</span> A GitHub deployment environment on the app repo, holding <code>PB_HOOKS_SSH_KEY</code> — the credential that writes server-side code to prod.",
+    how:"Its deployment branch policy admits <code>main</code> and nothing else, and the reusable deploy job declares <code>environment: prod</code>. A run from a branch is refused entry BEFORE its first step.",
+    risk:"Verified, not assumed: a branch-ref run fails with ZERO steps executed, and a job that omits <code>environment:</code> reads the secret as an empty string. A repo-level secret of the same name would silently undo all of it, which is why the test suite asserts no app has one." },
   { id:"app-template", zone:"forge", u:10.4, v:1.6, w:1.7, d:1.4, h:1.2, label:"APP-TEMPLATE", badge:"T",
-    what:"What every forge repo starts from: index.html, spec.json, and four workflows — deploy, lint, preview, promote.",
-    how:"Each workflow is owner-guarded (<code>if: github.repository_owner == …</code>) so the copies that travel to sol-apps at promotion are inert there, and vice versa.",
-    risk:"Template bugs replicate into every new app. The ref-creation guard lives here — deleting it would re-open the promote-before-review hole, which is why the workflow comment documents the incident." },
+    what:"What every app repo starts from: index.html, spec.json, and three workflows — deploy, lint, preview. <code>promote.yml</code> was deleted with the promoter.",
+    how:"Generated server-side by GitHub, which is why a token WITHOUT the Workflows permission can still create a repo carrying workflow files — the copy is not a push.",
+    risk:"Template bugs replicate into every new app. The owner guards that made each workflow inert in the wrong org are gone; the guards that matter moved into the reusable deploy workflow, where they are enforced once for everyone rather than copied into every repo." },
   { id:"bot", zone:"forge", u:13.4, v:3.6, w:1.5, d:1.3, h:1.4, label:"SOL-SANDBOX-PUSHER", badge:"🤖",
     what:"The GitHub account the agent works as. It pushes branches and opens PRs; that is all it can do.",
-    how:"A machine account with push access to sol-forge app repos. Its PAT (held in the agent sandbox) has Contents + Pull-requests, not Workflows.",
-    risk:"It cannot approve pull requests — its own or anyone's — so it cannot walk through the gate it creates work for. Verified empirically, not assumed from settings." },
+    how:"An org member whose org base permission is <code>none</code>, so membership grants it nothing — access comes only from per-repo grants on app repos. Its PAT has Contents + Pull-requests, not Workflows.",
+    risk:"It cannot approve pull requests — its own or anyone's — so it cannot walk through the gate it creates work for. Membership rather than outside-collaborator is deliberate: an outside-collaborator grant creates a pending INVITATION, and a machine account has nobody to accept it." },
   { id:"dispatch-tokens", zone:"forge", u:10.6, v:7.0, w:1.9, d:1.4, h:1.1, label:"DISPATCH TOKENS", badge:"⚿",
-    what:"The two deliberate exceptions to \"nothing in sol-forge points at sol-apps\": PROMOTER_DISPATCH_TOKEN and PREVIEWER_DISPATCH_TOKEN.",
+    what:"The two credentials a PUBLIC workflow file may reference: PROVISIONER_DISPATCH_TOKEN and PREVIEWER_DISPATCH_TOKEN.",
     how:"Fine-grained PATs scoped to exactly one private repo each, with <code>actions: write</code> only. All they can do is press a start button.",
-    risk:"Safe to reference from public workflow files because the agent's PAT lacks the Workflows permission — it cannot author or edit the file that reads them. Worst case if leaked: someone starts a promoter run, which then does all of its own checking anyway." },
+    risk:"Safe there ONLY because the agent's PAT lacks the Workflows permission — it cannot author or edit the file that reads them. That absence is load-bearing; if the bot PAT ever gains Workflows, these have to move. Worst case if leaked: someone starts a provisioner run, which then re-checks everything itself." },
 
   /* ---- preview box ---- */
   { id:"preview-box", zone:"preview", u:13.0, v:13.8, w:2.1, d:1.6, h:1.6, label:"PREVIEW SERVER", badge:"👁",
-    what:"Serves every open sol-forge PR at greenlightdev.solhann.net so a reviewer can USE an app before approving it. Reading 200 lines of HTML says the code matches the spec; it doesn't say the thing works.",
+    what:"Serves every open pull request at greenlightdev.solhann.net so a reviewer can USE an app before approving it. Reading 200 lines of HTML says the code matches the spec; it doesn't say the thing works.",
     how:"PR events dispatch the previewer repo, which SSHes here with a key forced to <code>preview-sync</code>. The box clones the exact commit anonymously and serves it as static files, with <code>.git</code>, <code>.github</code>, <code>pb_hooks</code>, <code>pb_migrations</code> stripped — the same exclusions prod uses. Closed or merged PRs are torn down by the same dispatch.",
     risk:"This machine runs code no human has approved yet — that is its job — so it is built to be worthless to compromise rather than built like a small prod: no credentials on the box, no root (systemd --user), nothing is ever executed (static files only), and it is a different machine from prod entirely." },
 
-  /* ---- sol-apps ---- */
-  { id:"promoter", zone:"apps", u:5.6, v:20.2, w:2.2, d:1.9, h:2.6, label:"PROMOTER", badge:"⇥",
-    what:"<span class='mark'>The only pipeline path from forge to prod.</span> Validates the slug, clones the forge repo anonymously, refuses any repo without spec.json, then pushes fast-forward-only into sol-apps. On an app's first promotion it also creates the prod repo, provisions the PocketBase jail over SSH, installs the per-app deploy key, and protects main.",
-    how:"A private repo, because it holds the powerful secrets. Every step is a plain <code>run:</code> script — no marketplace actions, so no third-party code ever touches these tokens.",
-    risk:"Fast-forward-only is the tripwire: a non-FF push means someone pushed sol-apps main directly, and the correct response is to alert — never retry, never force. The blast radius of this repo is the blast radius of PROMOTE_PUSH_TOKEN, which is why nothing else lives beside it." },
-  { id:"prod-repo", zone:"apps", u:9.4, v:23.6, w:2.1, d:1.8, h:1.9, label:"APP REPO ‹slug›", badge:"✓",
-    what:"The deployed record. The HEAD of main IS the statement of what has been promoted — there is no separate deploy log to drift out of sync.",
-    how:"Written only by the promoter (pipeline apps) or by the owner's direct push (legacy apps). Any push to main triggers deploy.yml, which is a ten-line caller of the shared reusable workflow.",
-    risk:"Public repo, so no secrets in code — secrets live in org/repo secret stores. The GITHUB_TOKEN caveat matters here: pushes made with the default token would NOT trigger deploys, so the promoter pushes with a PAT on purpose." },
+  /* ---- sol-apps: the private control plane ---- */
+  { id:"provisioner", zone:"apps", u:5.6, v:20.2, w:2.2, d:1.9, h:2.6, label:"PROVISIONER", badge:"⛭",
+    what:"<span class='mark'>The only path to prod resources.</span> Two workflows either side of the gate. <code>create-app.yml</code> makes a protected repo at DRAFT time and nothing else. <code>provision.yml</code> runs at the first MERGED deploy: it creates the PocketBase jail, the per-app deploy key, and the <code>solhann-app</code> topic.",
+    how:"A private repo holding the org-admin token — the only copy on the platform. Every step is a plain <code>run:</code> script; no marketplace actions, so no third-party code ever runs beside these secrets.",
+    risk:"It carries the check the old promoter never had: before touching prod it asks the repo whether main actually requires an approving review with <code>enforce_admins</code>, and refuses if not. The promoter pushed whatever was on forge main and ASSUMED the gate had held — nothing verified a human had ever looked." },
   { id:"workflows-repo", zone:"apps", u:13.2, v:20.8, w:2.0, d:1.6, h:1.6, label:"WORKFLOWS (reusable)", badge:"⚙",
-    what:"The one shared deploy pipeline every app calls. Editing this file changes deploy behaviour for every app on its next push.",
-    how:"Checks out, cache-busts asset URLs, then rsyncs over two separate jailed lanes: the public site to <code>/var/www/apps/&lt;slug&gt;</code>, and (for data apps) <code>pb_hooks</code> + <code>pb_migrations</code> to the instance dir.",
+    what:"The one shared deploy pipeline every app calls, and where the two guards now live: the job runs in <code>environment: prod</code>, and skips any push that CREATED the ref (template generation writes main in one push, which once put a bare scaffold on prod).",
+    how:"Checks out, decides whether the app has prod resources yet — the <code>solhann-app</code> topic is the tell, set by the provisioner as its LAST act — then either hands off to the provisioner and deploys nothing, or rsyncs over two separate jailed lanes: the public site to <code>/var/www/apps/&lt;slug&gt;</code>, and (for data apps) <code>pb_hooks</code> + <code>pb_migrations</code> to the instance dir.",
     risk:"Host keys are pinned via secrets — never <code>ssh-keyscan</code>, which would trust whoever answers. Both SSH identities are forced commands on prod; neither can open a shell or read anything back." },
   { id:"previewer-repo", zone:"apps", u:13.6, v:25.0, w:1.9, d:1.5, h:1.3, label:"PREVIEWER", badge:"▷",
-    what:"Receives PR dispatches from forge and drives the preview box: <code>&lt;slug&gt; &lt;pr&gt; &lt;sha&gt; up|down</code>.",
-    how:"Same pattern as the promoter on purpose: an event in a public repo fires a dispatch at a private repo that holds the only credential.",
-    risk:"Kept SEPARATE from the promoter because a repo's blast radius is set by its most powerful secret. PREVIEW_SSH_KEY is near-worthless — jailed to preview-sync on a box with nothing on it — and putting it beside prod-write tokens would raise it to their risk level and falsify the promoter's \"only path to prod\" claim." },
+    what:"Receives PR dispatches from the app repos and drives the preview box: <code>&lt;slug&gt; &lt;pr&gt; &lt;sha&gt; up|down</code>.",
+    how:"Same pattern as the provisioner on purpose: an event in a public repo fires a dispatch at a private repo that holds the only credential.",
+    risk:"Kept SEPARATE from the provisioner because a repo's blast radius is set by its most powerful secret. PREVIEW_SSH_KEY is near-worthless — jailed to preview-sync on a box with nothing on it — and putting it beside prod-write tokens would raise it to their risk level and falsify the provisioner's \"only path to prod resources\" claim." },
 
   /* ---- prod box ---- */
   { id:"caddy", zone:"prod", u:-7.6, v:11.2, w:1.7, d:1.4, h:1.5, label:"CADDY", badge:"⇆",
@@ -336,9 +336,9 @@ const NODES = [
     how:"One Caddy instance, per-app route blocks written by provision-app. PocketBase instances bind 127.0.0.1 only — nothing reaches them except through here.",
     risk:"The only process listening on the public internet. Everything behind it assumes Caddy is the sole entry point, which is enforced by the loopback binding, not by policy." },
   { id:"greenlight-app", zone:"prod", u:-1.8, v:9.6, w:2.2, d:1.7, h:2.4, label:"GREENLIGHT", badge:"GL",
-    what:"The control panel itself: shelf, build wizard, review board. Its server hooks (six routes under <code>/api/build/*</code>) run the whole show — start agent sessions, create and protect forge repos, stream progress back to the builder.",
+    what:"The control panel itself: shelf, build wizard, review board. Its server hooks (six routes under <code>/api/build/*</code>) run the whole show — start agent sessions, ask the provisioner for a protected repo, stream progress back to the builder.",
     how:"Deliberately just another jailed PocketBase app on this box — same systemd sandbox, same deploy lanes, no special access. All of its power is borrowed from tokens pushed into its environment.",
-    risk:"This is the loop in the diagram: the thing that builds apps is an app on the box it deploys to. Its strongest token (FORGE_ADMIN_TOKEN) writes only to sol-forge — a full compromise of greenlight can spam the dev org and burn agent money, but cannot push to sol-apps, cannot approve a PR, and cannot touch prod outside its own jail." },
+    risk:"This is the loop in the diagram: the thing that builds apps is an app on the box it deploys to. It holds NO admin token any more — its strongest credential can start one workflow and push a branch. A full compromise can burn agent money and open pull requests nobody approves; it cannot create prod resources, alter a gate, or ship anything." },
   { id:"static-files", zone:"prod", u:-7.0, v:16.4, w:1.9, d:1.5, h:1.2, label:"/var/www/apps", badge:"▤",
     what:"Every app's public site, one folder per slug. What Caddy serves.",
     how:"Written only through the deploy jail: an SSH key forced to <code>rrsync /var/www/apps</code> — one command, one directory, no shell.",
@@ -353,8 +353,8 @@ const NODES = [
     risk:"Nothing reads these back off the box and no lane may ever be added that does. A copy anywhere else would be a second, staler, more exposed version of a live prod credential. Tools that need superuser auth run on prod instead." },
   { id:"provision-app", zone:"prod", u:-2.8, v:22.2, w:2.1, d:1.7, h:1.7, label:"PROVISION-APP", badge:"⛭",
     what:"Creates or repairs an app's jail: unix user, systemd unit, Caddy route, superuser password, deploy-key install. Idempotent — safe to re-run forever.",
-    how:"Root-owned script with SSH forced-command entry points: the laptop's key forces <code>--ssh</code>; the promoter's key forces <code>--ssh-provision-only</code>, a narrower mode that additionally refuses <code>--push-env</code> (which rewrites a live app's runtime secrets and takes the slug from the caller).",
-    risk:"The forced commands are the jail. Neither SSH identity gets a shell, and the promoter's lane cannot touch runtime secrets even if the promoter is compromised. Root work (editing this script, bootstrap) happens only through the owner's interactive sudo lane." },
+    how:"Root-owned script with SSH forced-command entry points: the laptop's key forces <code>--ssh</code>; the provisioner's CI key forces <code>--ssh-provision-only</code>, a narrower mode that additionally refuses <code>--push-env</code> (which rewrites a live app's runtime secrets and takes the slug from the caller).",
+    risk:"The forced commands are the jail, and they are unchanged by the one-org migration — which is why that migration needed no prod-side change at all. Neither SSH identity gets a shell, and the CI lane cannot touch runtime secrets even if the provisioner is compromised." },
   { id:"pb-migrate", zone:"prod", u:0.2, v:13.0, w:1.7, d:1.4, h:1.3, label:"PB-MIGRATE", badge:"⟳",
     what:"Applies schema changes safely: stop the app, snapshot the data, apply migrations one at a time, quarantine any failure, health-check, carry on.",
     how:"A systemd path watcher per app. Backups go to <code>/var/backups</code> (last ten kept); a failed migration moves to <code>pb_migrations_failed/</code> so the app recovers on its previous schema instead of crash-looping.",
@@ -374,9 +374,9 @@ const NODES = [
     how:"<code>~/.config/solhann/pb-secrets</code>, dir 700 / file 600, never in any repo. Runtime secrets reach an app via <code>pb-provision &lt;slug&gt; --push-env</code>.",
     risk:"Superuser passwords were deliberately evicted from here — prod owns those now. Bare <code>&lt;slug&gt;</code> entries are leftovers, removed with <code>pb-secret rm</code> only after that app has been re-provisioned (before that, they are the only copy)." },
   { id:"ssh-lanes", zone:"laptop", u:-12.0, v:26.6, w:1.8, d:1.5, h:1.5, label:"SSH LANES", badge:"⇶",
-    what:"Three lanes to prod, most-jailed first: <code>pb-provision</code> (forced command, not a shell) · the promoter's CI key (provision-only, refuses --push-env) · <code>ssh prod</code> (interactive shell as sol).",
+    what:"Three lanes to prod, most-jailed first: <code>pb-provision</code> (forced command) · the provisioner's CI key (provision-only, refuses --push-env) · <code>ssh prod</code> (interactive shell as sol).",
     how:"Root login is disabled, but root ACCESS is not: <code>ssh -t prod 'sudo …'</code> works with a password only the owner can type. That is how bootstrap and /usr/local/bin work gets done.",
-    risk:"The write-only property holds across all three lanes: none of them can read a superuser password back off the box. The sudo lane is the one honest superpower in the system, and it is gated on a human at this keyboard." },
+    risk:"The write-only property holds across all three lanes: none of them can read a superuser password back off the box. One sharp edge, found 2026-08-26: <code>-i key -o IdentitiesOnly=yes</code> does NOT stop ssh also offering the key named in <code>~/.ssh/config</code> — which here is unrestricted on prod. When the jailed key could not be signed with, ssh silently fell through to it and gave a shell instead of the jail. Every lane now passes <code>-F /dev/null</code>, turning silent escalation into an honest failure." },
 ];
 
 const CRED_COLORS = { none:"var(--olive)", scoped:"var(--blue)", prodwrite:"var(--red)", human:"var(--amber)" };
@@ -395,24 +395,24 @@ const EDGES = [
   { id:"e_build_start", from:"builder", to:"greenlight-app", cls:"human",
     label:"describe / answer", carries:"the idea, interview answers",
     cred:"Logged-in PocketBase session over HTTPS",
-    note:"The builder talks to the wizard; greenlight's hooks stream agent progress back over SSE. Nothing the builder types goes anywhere but sol-forge, behind the gate." },
+    note:"The builder talks to the wizard; greenlight's hooks stream agent progress back over SSE. Nothing the builder types reaches prod — it lands on a branch, behind the gate." },
   { id:"e_pushenv", from:"pb-secret-store", to:"greenlight-app", cls:"scoped", aux:true,
-    label:"--push-env", carries:"runtime secrets (API + forge tokens)",
+    label:"--push-env", carries:"runtime secrets (API + GitHub tokens)",
     cred:"pb-provision --push-env over the jailed laptop SSH lane",
-    note:"How greenlight gets its power: tokens are pushed into its jailed environment from the laptop's secret store. The promoter's narrower SSH lane refuses this flag entirely." },
+    note:"How greenlight gets its power: tokens are pushed into its jailed environment from the laptop's secret store. The provisioner's narrower CI lane refuses this flag entirely." },
   { id:"e_gl_agent", from:"greenlight-app", to:"agent", cls:"scoped",
     label:"start session", carries:"spec + kickoff instructions",
     cred:"Anthropic API key (in greenlight's env)",
     note:"Greenlight starts a managed-agent session and relays the interview. The kickoff tells the agent the merge ships — no false comfort about later checkpoints." },
-  { id:"e_gl_forge", from:"greenlight-app", to:"forge-repo", cls:"scoped",
-    label:"create repo · protect main", carries:"repo from template, branch protection",
-    cred:"FORGE_ADMIN_TOKEN — writes to sol-forge ONLY",
-    note:"Slug availability is checked anonymously against sol-apps first (a private prod repo looks free to anonymous eyes, so a RESERVED list floors the private names). Greenlight holds nothing that writes to sol-apps." },
-  { id:"e_agent_forge", from:"agent", to:"forge-repo", cls:"scoped",
+  { id:"e_gl_factory", from:"greenlight-app", to:"provisioner", cls:"scoped",
+    label:"draft → dispatch factory", carries:"slug, description",
+    cred:"PROVISIONER_DISPATCH_TOKEN — one repo, actions:write only",
+    note:"Greenlight used to create the repo itself, holding an org-admin PAT that could equally have REMOVED branch protection from every repo in the org — it could dismantle the gate it exists to enforce. It now asks, and waits until protection is visible before a session is allowed to exist." },
+  { id:"e_agent_repo", from:"agent", to:"app-repo", cls:"scoped",
     label:"push branch · open PR", carries:"the app's code",
     cred:"Bot PAT: Contents + Pull-requests, NO Workflows permission",
-    note:"The missing Workflows permission is load-bearing three times over: the agent cannot edit the workflows that read dispatch secrets, cannot smuggle a new workflow into prod via promotion, and the bot cannot approve its own PR." },
-  { id:"e_forge_previewer", from:"forge-repo", to:"previewer-repo", cls:"scoped",
+    note:"The missing Workflows permission is load-bearing: the agent cannot author or edit the workflow files that read the dispatch secrets, so it can never route one into code it controls. Verified — a push adding a workflow is refused outright. It also cannot approve its own PR." },
+  { id:"e_repo_previewer", from:"app-repo", to:"previewer-repo", cls:"scoped",
     label:"PR event → dispatch", carries:"slug, PR number, commit sha",
     cred:"PREVIEWER_DISPATCH_TOKEN — one repo, actions:write only",
     note:"Opened, updated and closed PRs all fire the same dispatch, so previews appear, update and tear down with no accumulation." },
@@ -420,7 +420,7 @@ const EDGES = [
     label:"up / down", carries:"‹slug› ‹pr› ‹sha› up|down",
     cred:"PREVIEW_SSH_KEY, forced to preview-sync — cannot get a shell",
     note:"The only credential in the preview system, and it is jailed to a box that holds nothing. Host key pinned, never scanned." },
-  { id:"e_forge_box", from:"forge-repo", to:"preview-box", cls:"none",
+  { id:"e_repo_box", from:"app-repo", to:"preview-box", cls:"none",
     label:"anonymous clone", carries:"the PR's exact commit",
     cred:"None — public repo, anonymous git",
     note:"The box pulls; nothing pushes to it. It clones the commit, strips .git/.github/pb_hooks/pb_migrations, and serves static files only." },
@@ -428,30 +428,30 @@ const EDGES = [
     label:"try the app", carries:"clicks",
     cred:"None — the preview is public-ish by design",
     note:"The reviewer uses the actual running thing at greenlightdev.solhann.net before deciding. The diff says what changed; the preview says whether it works." },
-  { id:"e_rev_gate", from:"reviewer", to:"forge-repo", cls:"human", gate:true,
+  { id:"e_rev_gate", from:"reviewer", to:"app-repo", cls:"human", gate:true,
     label:"APPROVE + MERGE — THE GATE", carries:"the one human decision",
     cred:"The reviewer's own GitHub account",
-    note:"One approving review, enforce_admins, bot cannot self-approve. This click is the deploy: after it, promotion and deployment are automatic and nobody looks again." },
-  { id:"e_forge_promoter", from:"forge-repo", to:"promoter", cls:"scoped",
-    label:"merge → dispatch", carries:"slug (validated again on arrival)",
-    cred:"PROMOTER_DISPATCH_TOKEN — one repo, actions:write only",
-    note:"promote.yml is owner-guarded and skips the push that creates main — template generation once fired this pre-review and promoted a bare scaffold. The guard and the incident are documented in the workflow itself." },
-  { id:"e_promoter_forge", from:"promoter", to:"forge-repo", cls:"none",
-    label:"anonymous clone", carries:"the merged main",
-    cred:"None — anonymous git",
-    note:"The promoter trusts nothing from the dispatch payload beyond the slug, which it re-validates. Then the second scaffold guard: any repo with no spec.json is refused outright." },
-  { id:"e_promoter_prov", from:"promoter", to:"provision-app", cls:"scoped",
-    label:"first promotion: provision", carries:"slug",
+    note:"One approving review, enforce_admins, bot cannot self-approve. Verified that enforce_admins refuses BOTH a direct push and the admin merge override — gh advertises --admin as the escape hatch for exactly this, and it does not work. After this click nobody looks again." },
+  { id:"e_deploy_provisioner", from:"workflows-repo", to:"provisioner", cls:"scoped",
+    label:"no topic → dispatch", carries:"slug (validated again on arrival)",
+    cred:"PROVISIONER_DISPATCH_TOKEN — one repo, actions:write only",
+    note:"Only on the FIRST merged deploy, and only because the app has no solhann-app topic yet. That pass deploys nothing: there is no vhost and no instance to deploy to, so an rsync would publish files to a URL that does not serve them and still look green." },
+  { id:"e_provisioner_repo", from:"provisioner", to:"app-repo", cls:"prodwrite",
+    label:"create · protect · then topic", carries:"the repo itself, then the mark that prod exists",
+    cred:"ORG_ADMIN_TOKEN — the only copy, held only here",
+    note:"Both halves of the provisioner's job land here. At draft: generate from the template, protect main, grant the bot, create the empty prod environment. At the first reviewed merge: set the solhann-app topic, LAST, so its presence means provisioning finished rather than started." },
+  { id:"e_provisioner_prov", from:"provisioner", to:"provision-app", cls:"scoped",
+    label:"first merge: provision", carries:"slug",
     cred:"CI SSH key forced to provision-app --ssh-provision-only",
     note:"Creates the jail, generates the superuser on-box, installs the per-app deploy key. The forced mode refuses --push-env, so this lane can never rewrite a live app's runtime secrets." },
-  { id:"e_promoter_prodrepo", from:"promoter", to:"prod-repo", cls:"prodwrite",
-    label:"fast-forward-only push", carries:"the reviewed commit, unchanged",
-    cred:"PROMOTE_PUSH_TOKEN — Contents + Workflows RW on sol-apps",
-    note:"The single most powerful token in the pipeline, held only in the private promoter, used only after the human gate. FF-only via an explicit merge-base check: a non-FF means someone pushed prod directly — alert, never retry, never force." },
-  { id:"e_prodrepo_wf", from:"prod-repo", to:"workflows-repo", cls:"none",
-    label:"deploy.yml → reusable", carries:"the checkout",
+  { id:"e_provisioner_env", from:"provisioner", to:"prod-env", cls:"prodwrite",
+    label:"install deploy key", carries:"the private half of a fresh per-app keypair",
+    cred:"ORG_ADMIN_TOKEN writing an ENVIRONMENT secret",
+    note:"The key goes into the prod environment, never a repo secret. A repo secret is readable by ANY workflow run — including one the agent triggers from its own branch — and that difference is the whole of what replaced the org boundary." },
+  { id:"e_merge_deploy", from:"app-repo", to:"workflows-repo", cls:"none",
+    label:"merge → deploy.yml → reusable", carries:"the checkout",
     cred:"GitHub-internal (secrets: inherit at run time)",
-    note:"Every app's deploy.yml is a ten-line caller. The promoter pushes with a PAT precisely so this trigger fires — pushes made with the default GITHUB_TOKEN start no workflows." },
+    note:"Every app's deploy.yml is a ten-line caller. Merging is what fires it — there is no promotion step in between any more, which is why the reviewer's click is described as the deploy rather than a step before one." },
   { id:"e_wf_static", from:"workflows-repo", to:"static-files", cls:"scoped",
     label:"rsync public site", carries:"static files (README, .git, pb_hooks excluded)",
     cred:"SERVER_SSH_KEY, forced to rrsync /var/www/apps",
@@ -474,13 +474,13 @@ const EDGES = [
   { id:"e_caddy_pb", from:"caddy", to:"pb-jails", cls:"none", thin:true,
     label:"proxy /api", carries:"API traffic", cred:"Loopback proxy",
     note:"Data apps' API traffic is proxied to 127.0.0.1:‹port›. Instances are unreachable except through here." },
-  { id:"e_legacy_push", from:"platform-cli", to:"prod-repo", cls:"human", aux:true,
+  { id:"e_legacy_push", from:"platform-cli", to:"app-repo", cls:"human", aux:true,
     label:"legacy lane: direct push", carries:"pre-greenlight app code",
     cred:"The owner's own GitHub account",
-    note:"How apps shipped before greenlight, and still how pre-pipeline apps are edited: local change, git push to sol-apps, deploy fires. No review gate — accepted because it is the owner by hand. New apps do not get this lane." },
-  { id:"e_schema", from:"pb-dev", to:"prod-repo", cls:"human", aux:true,
+    note:"How apps shipped before greenlight. That lane is now CLOSED: every app repo has a protected main, so even the owner must open a pull request, and merging is restricted to a named human. The break-glass is that an owner can still edit protection, push, and put it back — enforce_admins prevents bypassing rules, not editing them." },
+  { id:"e_schema", from:"pb-dev", to:"app-repo", cls:"human", aux:true,
     label:"commit pb_migrations", carries:"recorded schema changes",
-    cred:"Owner push (legacy apps) or the full pipeline (greenlight apps)",
+    cred:"The same reviewed pull request as any other change",
     note:"Schema edits are rehearsed locally, recorded as migration files, and shipped like code. Never edited on prod — not in the dashboard, not over the API." },
   { id:"e_provision_lane", from:"platform-cli", to:"provision-app", cls:"scoped", aux:true,
     label:"pb-provision (jailed)", carries:"provision / repair / deploy-key / push-env",
@@ -499,22 +499,22 @@ const EDGES = [
 const FLOWS = {
   build: {
     title:"NEW APP — greenlight, end to end",
-    intro:"The full governed path, exactly as verified live with <code>dice-roller</code>: idea → agent → human gate → live at ‹slug›.solhann.net, with no manual deploy step anywhere.",
+    intro:"The full governed path, verified end to end with <code>one-org-smoke</code> on 2026-08-26: idea → agent → human gate → live at ‹slug›.solhann.net, with no manual deploy step anywhere. Nothing exists on the server until the merge.",
     steps:[
       ["e_build_start","A builder opens the wizard and describes the app; the agent interviews them through greenlight's hooks."],
-      ["e_gl_forge","Greenlight checks the slug (anonymously, against prod) and creates sol-forge/‹slug› from the template, branch-protected from birth."],
+      ["e_gl_factory","Greenlight checks the slug, then asks the provisioner factory for the repo — it holds no admin token of its own. It waits until protection is VISIBLE before letting a session exist: the repo appears seconds before it is locked down, so ‘the repo is there’ is exactly the wrong signal to proceed on."],
       ["e_gl_agent","Greenlight starts a managed-agent session with the spec and a kickoff that says: the merge ships."],
-      ["e_agent_forge","The agent writes the app and opens a pull request as the bot. It cannot merge it, approve it, or touch workflows."],
-      ["e_forge_previewer","The PR event dispatches the previewer — a start button and nothing more."],
+      ["e_agent_repo","The agent writes the app and opens a pull request as the bot. It cannot merge it, approve it, or touch workflows."],
+      ["e_repo_previewer","The PR event dispatches the previewer — a start button and nothing more."],
       ["e_previewer_box","The previewer tells the preview box to bring this PR up."],
-      ["e_forge_box","The box clones the exact commit anonymously and serves it as static files. No secrets, no execution."],
+      ["e_repo_box","The box clones the exact commit anonymously and serves it as static files. No secrets, no execution."],
       ["e_rev_box","The reviewer tries the running app at greenlightdev.solhann.net."],
       ["e_rev_gate","THE GATE. One human approves and merges. This click IS the deploy — everything after it is automatic."],
-      ["e_forge_promoter","The merge fires promote.yml, which dispatches the private promoter. (The push that CREATES main is skipped — that guard exists because of a real incident.)"],
-      ["e_promoter_forge","The promoter clones forge anonymously and refuses anything without spec.json — the second scaffold guard."],
-      ["e_promoter_prov","First promotion only: the jail is provisioned over the write-only SSH lane; prod generates its own superuser password."],
-      ["e_promoter_prodrepo","The reviewed commit is pushed fast-forward-only into sol-apps — the promotion record."],
-      ["e_prodrepo_wf","The push triggers deploy.yml, a thin caller of the shared reusable pipeline."],
+      ["e_deploy_provisioner","First merge only: deploy sees no solhann-app topic, hands off to the provisioner, and deploys NOTHING on that pass. (The push that CREATES main is skipped entirely — that guard exists because of a real incident.)"],
+      ["e_provisioner_repo","sol-apps/‹slug› now exists: protected, bot-writable, with an EMPTY prod environment. No topic, no instance, nothing on the server — an abandoned draft leaves one empty GitHub repo and no prod resources."],
+      ["e_provisioner_prov","The provisioner first asks the repo whether main really requires an approving review with enforce_admins, then provisions the jail over the write-only SSH lane. Prod generates its own superuser password."],
+      ["e_provisioner_env","A fresh per-app deploy key is installed: public half jailed on prod, private half into the prod ENVIRONMENT, where no branch run can reach it."],
+      ["e_merge_deploy","The provisioner sets the solhann-app topic LAST, then re-dispatches deploy — which now takes the normal path through the shared reusable pipeline."],
       ["e_wf_static","The public site rsyncs through the rrsync jail into /var/www/apps/‹slug›."],
       ["e_wf_hooks","Server-side code and migrations rsync through the app's own write-only lane."],
       ["e_visit","Live. Visitors reach the app at ‹slug›.solhann.net through Caddy."],
@@ -523,17 +523,14 @@ const FLOWS = {
     title:"CHANGE AN EXISTING APP — same gate",
     intro:"Editing goes through the identical pipeline as creating, verified live with <code>hello</code>. The entry point is the app's overlay on the shelf → <code>build.html?change=‹slug›</code>.",
     steps:[
-      ["e_build_start","A builder requests a change from the app's shelf overlay; greenlight refuses if the forge repo is missing, unready, or already has an open agent PR."],
+      ["e_build_start","A builder requests a change from the app's shelf overlay; greenlight refuses if the app repo is missing, has no spec.json, or already has an open agent PR."],
       ["e_gl_agent","The agent session starts against the EXISTING repo; spec.json updates travel in the same PR as the code."],
-      ["e_agent_forge","The agent pushes a branch and opens the PR as the bot."],
-      ["e_forge_previewer","The PR dispatches the previewer…"],
+      ["e_agent_repo","The agent pushes a branch and opens the PR as the bot."],
+      ["e_repo_previewer","The PR dispatches the previewer…"],
       ["e_previewer_box","…which brings the changed app up on the preview box."],
       ["e_rev_box","The reviewer uses the changed app before deciding."],
       ["e_rev_gate","THE GATE, again — the same one. Approving the change merges it, and merging it puts it live."],
-      ["e_forge_promoter","Merge fires the dispatch."],
-      ["e_promoter_forge","Anonymous clone; spec.json check."],
-      ["e_promoter_prodrepo","Fast-forward push — the prod repo advances to exactly the reviewed commit. No provisioning this time; the jail already exists."],
-      ["e_prodrepo_wf","Deploy fires."],
+      ["e_merge_deploy","Merge fires deploy.yml directly. The app already carries its topic and its key, so there is no provisioning hop — it deploys straight away."],
       ["e_wf_static","Public site updates through the jail."],
       ["e_wf_hooks","Server-side code updates through the app's own lane."],
     ]},
@@ -542,7 +539,7 @@ const FLOWS = {
     intro:"How everything shipped before the pipeline, and still how pre-greenlight apps (this page included) are edited. No gate — the owner, by hand, on their own machine.",
     steps:[
       ["e_legacy_push","The owner edits locally and pushes straight to sol-apps main. create-app scaffolds new repos the same way (it provisioned the jail first, for data apps)."],
-      ["e_prodrepo_wf","The push triggers the same shared deploy as pipeline apps — from here the paths are identical."],
+      ["e_merge_deploy","The push triggers the same shared deploy as pipeline apps — from here the paths are identical."],
       ["e_wf_static","Public site through the rrsync jail."],
       ["e_wf_hooks","Server-side lane, if it's a data app."],
     ]},
@@ -551,7 +548,7 @@ const FLOWS = {
     intro:"Data-shape changes take a slower road because real data is at stake. Nothing edits live schema — not the dashboard, not the API. Prod replays a recording.",
     steps:[
       ["e_schema","Schema is edited on a throwaway local PocketBase (pb-dev); the dashboard writes migration files, which get committed and pushed — through the gate for pipeline apps."],
-      ["e_prodrepo_wf","Deploy fires like any code change."],
+      ["e_merge_deploy","Deploy fires like any code change."],
       ["e_wf_hooks","Migrations travel the write-only server-side lane, alongside hooks, with --checksum so unchanged files don't trigger restarts out of order."],
       ["e_migrate","On the box: stop → snapshot to /var/backups → apply one at a time → quarantine failures → health-check. A bad migration steps aside; the app keeps running on the schema that worked."],
     ]},
@@ -561,18 +558,19 @@ const overview = () => `
 <h2>The greenlight pipeline</h2>
 <div class="sub">how an idea becomes a live app — with one human gate</div>
 <div class="bd">
-<p>This map is the whole system: ${laptopHidden?"two machines":"three machines"}, two GitHub orgs, and the lines between them. <b>Every line is labelled with the credential that authorises it</b> and coloured by how dangerous that credential is — hover any of them.</p>
-<p>The shape is a loop: <span class="mark">greenlight itself is an app on the prod box it deploys to</span>. A builder talks to it, an agent builds in the dev org, a human approves, and the promoter carries the approved commit into the prod org, which deploys back onto the box.</p>
+<p>This map is the whole system: ${laptopHidden?"two machines":"three machines"}, one GitHub org, and the lines between them. <b>Every line is labelled with the credential that authorises it</b> and coloured by how dangerous that credential is — hover any of them.</p>
+<p>The shape is a loop: <span class="mark">greenlight itself is an app on the prod box it deploys to</span>. A builder talks to it, an agent builds on a branch, a human approves — and that merge IS the deploy, landing straight back on the box. There is no promotion step and no second copy of anything.</p>
+<p>Until 2026-08-26 there were two orgs and a promoter mirroring between them, and the org boundary was what kept the agent away from prod credentials. What replaced it lives in the repos themselves: protected main, and a <code>prod</code> environment a branch run cannot enter.</p>
 <p>Four invariants hold everything up:</p>
 <ul>
-<li><b>Nothing in sol-forge can write to sol-apps.</b> The only exceptions are two start-only dispatch tokens that can press a button and nothing else.</li>
-<li><b>Promotion is fast-forward-only.</b> A non-FF push means someone touched prod directly: alert, never force.</li>
+<li><b>Nothing the agent can reach holds a prod credential.</b> Prod secrets live in a <code>prod</code> environment whose deployment branch policy admits <code>main</code> only, so a branch run is refused entry before its first step. The only credentials a public workflow may name are two start-only dispatch tokens.</li>
+<li><b>Merging is deploying.</b> There is no promotion step and no second copy of anything. <code>enforce_admins</code> refuses a direct push AND the admin merge override, so the review gate is the only route onto main.</li>
 <li><b>The PR review is the only gate — merging IS deploying.</b> Everything before it is untrusted; everything after it is automatic.</li>
 <li><b>Prod's superuser passwords never leave prod.</b> Every SSH lane in is write-only; none can read secrets back.</li>
 </ul>
 ${laptopHidden
-  ? `<p>One path reaches prod in this view: the <b>promoter</b>, behind the gate. The owner's laptop is hidden, and with it the two lanes only a person at that keyboard can use \u2014 the <b>legacy direct push</b> (pre-greenlight apps) and the <b>sudo lane</b>. They still exist; they are simply not drawn.</p>`
-  : `<p>Three paths reach prod, from most to least governed: the <b>promoter</b> (behind the gate), the owner's <b>legacy direct push</b> (pre-greenlight apps only), and the owner's <b>sudo lane</b> (interactive, password-gated). Nothing else does.</p>`}
+  ? `<p>One path reaches prod in this view: a <b>reviewed merge</b>, behind the gate. The owner's laptop is hidden, and with it the lane only a person at that keyboard can use \u2014 the <b>sudo lane</b>. It still exists; it is simply not drawn.</p>`
+  : `<p>Two paths reach prod, from most to least governed: a <b>reviewed merge</b> (the gate, and the only automated one), and the owner's <b>sudo lane</b> (interactive, password-gated). The legacy direct push is gone \u2014 every app repo now has a protected main, so even the owner opens a pull request.</p>`}
 <p class="sub" style="margin-top:14px">▶ trace a flow from the top bar, or click anything on the map.</p>
 </div>`;
 
@@ -862,7 +860,7 @@ function edgesOf(nid){ return EDGES.filter(e=>e.from===nid||e.to===nid); }
 function select(type,id){
   if(trace.on) stopTrace();
   sel = {type, id, tab: sel.tab||"what"};
-  // A selection is addressable: #n/promoter, #e/e_promoter_prodrepo. replaceState
+  // A selection is addressable: #n/provisioner, #e/e_provisioner_env. replaceState
   // rather than push, so inspecting ten boxes does not bury the back button.
   try{ history.replaceState(null,"", type ? `#${type==="node"?"n":"e"}/${id}` : location.pathname+location.search); }catch(_){}
   for(const n of NODES){ const on = type==="node"&&id===n.id;
@@ -1120,7 +1118,7 @@ function setLaptop(hidden){
   const mach = document.getElementById("cMachines");
   if(mach) mach.textContent = hidden ? "2 — preview · prod" : "3 — laptop · preview · prod";
   const paths = document.getElementById("cPaths");
-  if(paths) paths.textContent = hidden ? "1 shown — the promoter" : "3 — all named below";
+  if(paths) paths.textContent = hidden ? "1 shown — the reviewed merge" : "2 — all named below";
 
   // Never leave the panel describing something that is no longer on screen.
   if(hidden && trace.on && FLOWS[trace.flow].steps.some(st=>LAPTOP_EDGES.has(st[0]))) stopTrace();
