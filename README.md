@@ -17,8 +17,8 @@ Built for reasoning about the system, not just admiring it:
 - **Click any box or line** for what-it-does / how-it's-built / **risk** notes.
   A selection is addressable — `#n/provisioner`, `#e/e_provisioner_env` — so you
   can link someone straight to the piece you mean.
-- **Trace a flow** step by step: new app, change to an existing app, the legacy
-  direct-push lane (now closed), and a schema change.
+- **Trace a flow** step by step: new app, change to an existing app, the owner
+  lane's direct push (apps only the owner can write to), and a schema change.
 - The one human gate — approving the PR — is marked on the map, because merging
   IS deploying.
 - **Hide the laptop** (button, top right) drops the owner's own machine — the
@@ -34,8 +34,9 @@ the system is the heaviest thing on the map, as it should be.
 
 The whole page is a single `index.html`; the diagram is generated from a data
 model at the top of the script, so editing the architecture doc means editing
-that data. It ships through the same pipeline it describes (legacy lane —
-this app predates greenlight).
+that data. It ships through the same pipeline it describes. The build agent can
+write to this repo, so it is in the gated lane: a change needs a reviewed pull request,
+not a direct push.
 
 **Live:** https://architecture.solhann.net
 **Gallery:** https://create.solhann.net

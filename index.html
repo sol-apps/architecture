@@ -211,7 +211,7 @@ text{ font-family:"IBM Plex Mono",ui-monospace,monospace; fill:var(--ink); user-
   <div class="btns">
     <button class="btn primary" data-flow="build">▶ new app</button>
     <button class="btn" data-flow="change">▶ change</button>
-    <button class="btn" data-flow="legacy">▶ legacy</button>
+    <button class="btn" data-flow="legacy">▶ owner lane</button>
     <button class="btn" data-flow="schema">▶ schema</button>
     <button class="btn" id="laptopBtn" title="Hide the owner's laptop: the local control plane, the pb-secret store, and the two direct lanes to prod that only a person at that keyboard can use.">hide laptop</button>
     <button class="btn" id="resetBtn">reset</button>
@@ -275,7 +275,7 @@ const NODES = [
     risk:"A malicious builder can burn agent-session money and produce a hostile draft — but every output lands on a BRANCH behind the review gate, and drafts are previewed on a box with nothing on it. A builder cannot reach prod." },
   { id:"reviewer", zone:"people", u:-12.4, v:8.2, w:1.4, d:1.4, h:2.2, kind:"actor", label:"REVIEWER", badge:"☑",
     what:"<span class='markr'>The only gate in the system.</span> Reads the PR, tries the running preview, and approves on GitHub. Approving is not a step before a deploy — merging IS deploying. Nobody gets a second look between the merge and production.",
-    how:"Branch protection on every app repo: one approving review, <code>enforce_admins</code> on, merging restricted to a named human, and the required <code>greenlight-lint</code> check where <code>lint.yml</code> exists. The bot cannot approve its own PR.",
+    how:"Branch protection on every app repo: one approving review, merging restricted to a named human, and the required <code>greenlight-lint</code> check where <code>lint.yml</code> exists. Every app the agent can reach, and <code>id-admin</code>, also has <code>enforce_admins</code> on; only owner-lane apps, which nobody but the owner can write to, leave it off. The bot cannot approve its own PR.",
     risk:"The reviewer's GitHub account is the most valuable credential anywhere in this system — more than any token. If it is compromised, the gate is gone. Everything else is built so that this is the ONLY thing that has to stay true." },
   { id:"visitor", zone:"people", u:-15.4, v:10.6, w:1.2, d:1.2, h:1.2, kind:"actor", label:"VISITOR", badge:"V",
     what:"Anyone using a finished app at <code>&lt;slug&gt;.solhann.net</code>.",
@@ -362,9 +362,9 @@ const NODES = [
 
   /* ---- laptop ---- */
   { id:"platform-cli", zone:"laptop", u:-15.4, v:21.4, w:1.9, d:1.5, h:1.6, label:"PLATFORM CLI", badge:"$",
-    what:"The control plane: <code>create-app</code>, <code>pb-provision</code>, <code>pb-backups</code>, <code>greenlight-backfill</code>. Also the legacy lane — pre-greenlight apps are edited here and pushed straight to sol-apps.",
-    how:"Bash scripts in the private platform repo. <code>greenlight-backfill &lt;slug&gt;</code> is what makes a mirrored legacy app editable through the pipeline.",
-    risk:"The legacy direct-push lane bypasses the review gate by definition — acceptable only because it is the owner, on their own machine, editing apps that predate the pipeline. Every new app goes through greenlight." },
+    what:"The control plane: <code>create-app</code>, <code>pb-provision</code>, <code>pb-backups</code>, <code>greenlight-backfill</code>, <code>projects-sync</code>. Also the owner lane — apps only the owner can write to are edited here and pushed straight to sol-apps main.",
+    how:"Bash scripts in the private platform repo. <code>app-lane.sh</code> is the one definition of which apps are in the owner lane; <code>greenlight-backfill &lt;slug&gt;</code> takes an app out of it, binding admins before the agent is let in.",
+    risk:"The owner lane bypasses the review gate by definition, on purpose (decided 2026-09-13): the bot cannot write to these repos, they have no spec.json, and id-admin is never one. Residual: anything holding the owner's GitHub login — every session on this laptop — can deploy them unreviewed, as it already can the infra repos. Every app the agent can reach still binds admins, and a guard fails if one does not." },
   { id:"pb-dev", zone:"laptop", u:-11.9, v:22.8, w:1.7, d:1.4, h:1.3, label:"PB-DEV", badge:"⌂",
     what:"A throwaway local PocketBase where all schema editing happens. Its dashboard writes <code>pb_migrations/</code> files, which are committed like any other code.",
     how:"<code>platform/bin/pb-dev</code> from the app checkout, dashboard on 127.0.0.1. The generated migration files are the ONLY way schema reaches prod.",
@@ -431,7 +431,7 @@ const EDGES = [
   { id:"e_rev_gate", from:"reviewer", to:"app-repo", cls:"human", gate:true,
     label:"APPROVE + MERGE — THE GATE", carries:"the one human decision",
     cred:"The reviewer's own GitHub account",
-    note:"One approving review, enforce_admins, bot cannot self-approve. Verified that enforce_admins refuses BOTH a direct push and the admin merge override — gh advertises --admin as the escape hatch for exactly this, and it does not work. After this click nobody looks again." },
+    note:"One approving review, enforce_admins, bot cannot self-approve. Verified that enforce_admins refuses BOTH a direct push and the admin merge override — gh advertises --admin as the escape hatch for exactly this, and it does not work. After this click nobody looks again. Owner-lane apps do not pass through this edge: see the owner lane." },
   { id:"e_deploy_provisioner", from:"workflows-repo", to:"provisioner", cls:"scoped",
     label:"no topic → dispatch", carries:"slug (validated again on arrival)",
     cred:"PROVISIONER_DISPATCH_TOKEN — one repo, actions:write only",
@@ -475,9 +475,9 @@ const EDGES = [
     label:"proxy /api", carries:"API traffic", cred:"Loopback proxy",
     note:"Data apps' API traffic is proxied to 127.0.0.1:‹port›. Instances are unreachable except through here." },
   { id:"e_legacy_push", from:"platform-cli", to:"app-repo", cls:"human", aux:true,
-    label:"legacy lane: direct push", carries:"pre-greenlight app code",
+    label:"owner lane: direct push", carries:"owner-only app code",
     cred:"The owner's own GitHub account",
-    note:"How apps shipped before greenlight. That lane is now CLOSED: every app repo has a protected main, so even the owner must open a pull request, and merging is restricted to a named human. The break-glass is that an owner can still edit protection, push, and put it back — enforce_admins prevents bypassing rules, not editing them." },
+    note:"Apps only the owner can write to (bot below write, no spec.json, not id-admin) keep a protected main with admins unbound, so the owner's push is the deploy. Reopened 2026-09-13 after a spell when even these needed a pull request the owner could not approve. provision.yml still refuses such an app, so this lane cannot reach a first provisioning, and greenlight-backfill binds admins before the agent is let in." },
   { id:"e_schema", from:"pb-dev", to:"app-repo", cls:"human", aux:true,
     label:"commit pb_migrations", carries:"recorded schema changes",
     cred:"The same reviewed pull request as any other change",
@@ -535,10 +535,10 @@ const FLOWS = {
       ["e_wf_hooks","Server-side code updates through the app's own lane."],
     ]},
   legacy: {
-    title:"LEGACY LANE — pre-greenlight apps",
-    intro:"How everything shipped before the pipeline, and still how pre-greenlight apps (this page included) are edited. No gate — the owner, by hand, on their own machine.",
+    title:"OWNER LANE — apps only the owner can write to",
+    intro:"How everything shipped before the pipeline, and how apps only the owner can write to still ship. No review gate, by design — the owner, by hand, on their own machine. Apps the agent can reach, this page included, go through the gate instead.",
     steps:[
-      ["e_legacy_push","The owner edits locally and pushes straight to sol-apps main. create-app scaffolds new repos the same way (it provisioned the jail first, for data apps)."],
+      ["e_legacy_push","The owner edits locally and pushes straight to sol-apps main. create-app scaffolds new repos into this lane (it provisions the jail first, for data apps)."],
       ["e_merge_deploy","The push triggers the same shared deploy as pipeline apps — from here the paths are identical."],
       ["e_wf_static","Public site through the rrsync jail."],
       ["e_wf_hooks","Server-side lane, if it's a data app."],
@@ -564,13 +564,13 @@ const overview = () => `
 <p>Four invariants hold everything up:</p>
 <ul>
 <li><b>Nothing the agent can reach holds a prod credential.</b> Prod secrets live in a <code>prod</code> environment whose deployment branch policy admits <code>main</code> only, so a branch run is refused entry before its first step. The only credentials a public workflow may name are two start-only dispatch tokens.</li>
-<li><b>Merging is deploying.</b> There is no promotion step and no second copy of anything. <code>enforce_admins</code> refuses a direct push AND the admin merge override, so the review gate is the only route onto main.</li>
+<li><b>Merging is deploying.</b> There is no promotion step and no second copy of anything. On every app the agent can reach, <code>enforce_admins</code> refuses a direct push AND the admin merge override, so the review gate is the only route onto main. The owner lane, apps only the owner can write to, is the deliberate exception.</li>
 <li><b>The PR review is the only gate — merging IS deploying.</b> Everything before it is untrusted; everything after it is automatic.</li>
 <li><b>Prod's superuser passwords never leave prod.</b> Every SSH lane in is write-only; none can read secrets back.</li>
 </ul>
 ${laptopHidden
-  ? `<p>One path reaches prod in this view: a <b>reviewed merge</b>, behind the gate. The owner's laptop is hidden, and with it the lane only a person at that keyboard can use \u2014 the <b>sudo lane</b>. It still exists; it is simply not drawn.</p>`
-  : `<p>Two paths reach prod, from most to least governed: a <b>reviewed merge</b> (the gate, and the only automated one), and the owner's <b>sudo lane</b> (interactive, password-gated). The legacy direct push is gone \u2014 every app repo now has a protected main, so even the owner opens a pull request.</p>`}
+  ? `<p>One path reaches prod in this view: a <b>reviewed merge</b>, behind the gate. The owner's laptop is hidden, and with it the lanes only a person at that keyboard can use \u2014 the <b>owner lane</b> push and the <b>sudo lane</b>. They still exist; they are simply not drawn.</p>`
+  : `<p>Three paths reach prod, from most to least governed: a <b>reviewed merge</b> (the gate, and the only automated one), the owner's <b>direct push</b> to apps only he can write to (the owner lane), and the owner's <b>sudo lane</b> (interactive, password-gated). Every app the agent can reach still needs the reviewed merge.</p>`}
 <p class="sub" style="margin-top:14px">▶ trace a flow from the top bar, or click anything on the map.</p>
 </div>`;
 
