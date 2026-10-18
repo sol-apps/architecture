@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>solhann.net · greenlight architecture</title>
-<meta name="description" content="An inspectable map of the greenlight pipeline: what lives on the laptop, in each GitHub org, and on prod — and which credential authorises every line between them.">
+<title>Greenlight architecture</title>
+<meta name="description" content="An inspectable map of the Greenlight pipeline on Forgejo: what lives on the laptop, the dev box and prod, and which credential authorises every line between them.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -201,19 +201,20 @@ text{ font-family:"IBM Plex Mono",ui-monospace,monospace; fill:var(--ink); user-
 <body>
 
 <header>
-  <div class="cell brand"><span class="k">solhann.net</span><span class="v">greenlight · architecture</span></div>
-  <div class="cell"><span class="k">github org</span><span class="v">1 — sol-apps</span></div>
-  <div class="cell"><span class="k">machines</span><span class="v" id="cMachines">3 — laptop · preview · prod</span></div>
+  <div class="cell brand"><span class="k">greenlit.page</span><span class="v">greenlight · architecture</span></div>
+  <div class="cell"><span class="k">forges</span><span class="v">2 — Forgejo for apps · GitHub for the platform</span></div>
+  <div class="cell"><span class="k">machines</span><span class="v" id="cMachines">3 — laptop · dev box · prod</span></div>
   <div class="cell"><span class="k">human gates</span><span class="v">1 — the PR review</span></div>
-  <div class="cell opt"><span class="k">paths to prod</span><span class="v" id="cPaths">2 — all named below</span></div>
+  <div class="cell opt"><span class="k">paths to prod</span><span class="v" id="cPaths">3 — all named below</span></div>
   <div class="cell opt2"><span class="k">prod creds an agent branch can read</span><span class="v">0</span></div>
   <div class="cell spacer"></div>
   <div class="btns">
     <button class="btn primary" data-flow="build">▶ new app</button>
     <button class="btn" data-flow="change">▶ change</button>
-    <button class="btn" data-flow="legacy">▶ owner lane</button>
+    <button class="btn" data-flow="access">▶ access</button>
     <button class="btn" data-flow="schema">▶ schema</button>
-    <button class="btn" id="laptopBtn" title="Hide the owner's laptop: the local control plane, the pb-secret store, and the two direct lanes to prod that only a person at that keyboard can use.">hide laptop</button>
+    <button class="btn" data-flow="platform">▶ platform</button>
+    <button class="btn" id="laptopBtn" title="Hide the owner's laptop: the local control plane, the pb-secret store, and the direct lanes that only a person at that keyboard can use.">hide laptop</button>
     <button class="btn" id="resetBtn">reset</button>
   </div>
 </header>
@@ -221,7 +222,7 @@ text{ font-family:"IBM Plex Mono",ui-monospace,monospace; fill:var(--ink); user-
 <main>
   <aside id="side"></aside>
   <div id="map">
-    <svg id="world" role="img" aria-label="Isometric map of the greenlight pipeline across the laptop, the sol-apps GitHub org, the preview box and the prod box."></svg>
+    <svg id="world" role="img" aria-label="Isometric map of the Greenlight pipeline across the laptop, Forgejo and the trusted services on the prod box, the dev box, and the platform's GitHub repos."></svg>
     <div id="tracebar"><span class="tt"></span><span class="st"></span></div>
     <div id="zoomui">
       <button class="btn" id="zin">+</button>
@@ -233,9 +234,9 @@ text{ font-family:"IBM Plex Mono",ui-monospace,monospace; fill:var(--ink); user-
       <span class="lg"><b style="font-size:13px;line-height:0">•</b>&nbsp;dots are the payload — hover one</span>
       <span class="lg key"><i style="border-color:var(--olive);border-top-width:1.5px"></i>no credential</span>
       <span class="lg key"><i style="border-color:var(--blue);border-top-style:dashed"></i>scoped / jailed</span>
-      <span class="lg key"><i style="border-color:var(--red);border-top-width:4px"></i>prod-writing</span>
+      <span class="lg key"><i style="border-color:var(--red);border-top-width:4px"></i>gate-altering</span>
       <span class="lg key"><i style="border-color:var(--amber);border-top-style:dotted;border-top-width:3px"></i>human action</span>
-      <span class="lg key"><i style="border-color:var(--mut);opacity:.6"></i>faded = admin / legacy</span>
+      <span class="lg key"><i style="border-color:var(--mut);opacity:.6"></i>faded = owner's admin lanes</span>
     </div>
   </div>
   <aside id="panel"></aside>
@@ -253,130 +254,154 @@ text{ font-family:"IBM Plex Mono",ui-monospace,monospace; fill:var(--ink); user-
 const ZONES = [
   { id:"people",  label:"PEOPLE", sub:"three roles, one of them is the gate",
     u0:-17.6, v0:3.0, u1:-10.2, v1:12.4 },
-  { id:"sandbox", label:"AGENT SANDBOX", sub:"Anthropic-hosted, ephemeral",
-    u0:-6.6, v0:-0.6, u1:1.0, v1:4.2 },
-  { id:"forge",   label:"GITHUB · SOL-APPS", sub:"public app repos — the agent works on branches here",
-    u0:2.8, v0:-0.6, u1:15.9, v1:9.6 },
-  { id:"preview", label:"PREVIEW BOX", sub:"greenlightdev.solhann.net — holds nothing worth stealing",
+  { id:"sandbox", label:"AGENT SANDBOX", sub:"Anthropic-hosted, ephemeral, one container per build",
+    u0:-6.6, v0:-2.0, u1:1.0, v1:3.8 },
+  { id:"forge",   label:"FORGEJO · GIT.GREENLIT.PAGE", sub:"on the prod box: no CI runner, no stored secret, Actions off",
+    u0:2.8, v0:-0.6, u1:15.9, v1:11.0 },
+  { id:"preview", label:"DEV BOX", sub:"preview.greenlit.page: holds nothing worth stealing",
     u0:10.2, v0:11.6, u1:15.9, v1:16.0 },
-  { id:"apps",    label:"SOL-APPS · CONTROL PLANE", sub:"private repos — the bot has no access to any of these",
-    u0:2.8, v0:18.0, u1:15.9, v1:27.2 },
-  { id:"prod",    label:"PROD BOX", sub:"solhann.net — one server, every app in its own jail",
-    u0:-9.4, v0:7.6, u1:1.6, v1:27.2 },
+  { id:"services", label:"PROD · TRUSTED SERVICES", sub:"loopback only: the only writer to Forgejo, and the only deployer",
+    u0:2.8, v0:18.0, u1:15.9, v1:28.2 },
+  { id:"prod",    label:"PROD BOX · RUNTIME", sub:"greenlit.page and solhann.net: one server, every app in its own jail",
+    u0:-9.4, v0:7.6, u1:2.2, v1:27.2 },
+  { id:"github",  label:"GITHUB · SOL-APPS", sub:"the platform's own repos, still deployed by the GitHub pipeline",
+    u0:-9.4, v0:30.4, u1:2.2, v1:35.8 },
   { id:"laptop",  label:"YOUR LAPTOP", sub:"control plane + the only human lanes into prod",
-    u0:-17.6, v0:19.6, u1:-10.2, v1:28.8 },
+    u0:-17.6, v0:19.6, u1:-10.2, v1:29.8 },
 ];
 
 const NODES = [
   /* ---- people ---- */
-  { id:"builder", zone:"people", u:-15.4, v:5.2, w:1.2, d:1.2, h:1.5, kind:"actor", label:"BUILDER", badge:"B",
-    what:"Anyone allowed onto greenlight who wants an app to exist. They describe it in the build wizard, answer the agent's questions, and wait. They never touch git, GitHub, or a server.",
-    how:"A logged-in browser session on greenlight.solhann.net (PocketBase auth, token in localStorage). The wizard is <code>build.html</code>; a change to an existing app starts from the app's overlay on the shelf, which opens <code>build.html?change=&lt;slug&gt;</code>.",
-    risk:"A malicious builder can burn agent-session money and produce a hostile draft — but every output lands on a BRANCH behind the review gate, and drafts are previewed on a box with nothing on it. A builder cannot reach prod." },
-  { id:"reviewer", zone:"people", u:-12.4, v:8.2, w:1.4, d:1.4, h:2.2, kind:"actor", label:"REVIEWER", badge:"☑",
-    what:"<span class='markr'>The only gate in the system.</span> Reads the PR, tries the running preview, and approves on GitHub. Approving is not a step before a deploy — merging IS deploying. Nobody gets a second look between the merge and production.",
-    how:"Branch protection on every app repo: one approving review, merging restricted to a named human, and the required <code>greenlight-lint</code> check where <code>lint.yml</code> exists. Every app the agent can reach, and <code>id-admin</code>, also has <code>enforce_admins</code> on; only owner-lane apps, which nobody but the owner can write to, leave it off. The bot cannot approve its own PR.",
-    risk:"The reviewer's GitHub account is the most valuable credential anywhere in this system — more than any token. If it is compromised, the gate is gone. Everything else is built so that this is the ONLY thing that has to stay true." },
+  { id:"builder", zone:"people", u:-12.4, v:8.2, w:1.2, d:1.2, h:1.5, kind:"actor", label:"BUILDER", badge:"B",
+    what:"Anyone allowed onto Greenlight who wants an app to exist. They describe it in the build wizard, answer the agent's questions, and wait. They never touch git, Forgejo, or a server.",
+    how:"A logged-in browser session on <code>build.greenlit.page</code>. A new app starts at <code>build.html</code>; a change to an existing one starts from the app's overlay on the shelf, which opens <code>build.html?change=&lt;slug&gt;</code>.",
+    risk:"A malicious builder can burn agent-session money and produce a hostile draft, but every output lands in a pull request behind the review gate, and drafts are previewed on a box with nothing on it. A builder cannot reach prod." },
+  { id:"reviewer", zone:"people", u:-15.4, v:5.2, w:1.4, d:1.4, h:2.2, kind:"actor", label:"REVIEWER", badge:"☑",
+    what:"<span class='markr'>The only gate in the system.</span> Reads the pull request and the evaluator's report, tries the running preview, and approves on Forgejo. Approving is not a step before a deploy: merging IS deploying. Nobody gets a second look between the merge and production.",
+    how:"Branch protection on every app repo: push to main disabled for everyone, one approval, approvals and merging restricted to the owner, <code>apply_to_admins</code>, stale approvals dismissed. deployd then re-checks that approval on the merged commit itself before anything ships. The same person also grants access in id-admin.",
+    risk:"On this instance the reviewer is also the Forgejo instance admin, who can edit protection. He still cannot ship unreviewed work, because deployd refuses a merge with no qualifying approval by someone other than the author. A replicated platform needs the instance admin and the reviewers to be different people." },
   { id:"visitor", zone:"people", u:-15.4, v:10.6, w:1.2, d:1.2, h:1.2, kind:"actor", label:"VISITOR", badge:"V",
-    what:"Anyone using a finished app at <code>&lt;slug&gt;.solhann.net</code>.",
-    how:"Plain HTTPS to Caddy on the prod box, which routes the subdomain to that app's static folder and (for data apps) its PocketBase instance.",
-    risk:"Visitors only ever see published apps. Per-record API rules scope what a logged-in visitor can read; the jail scopes what a hostile app could do with their data." },
+    what:"Anyone using a finished app at <code>&lt;slug&gt;.greenlit.page</code>.",
+    how:"Plain HTTPS to Caddy on the prod box. A signed-in app sends them to <code>id.greenlit.page</code> once; after that one login covers every app they hold a grant for.",
+    risk:"Who may use which app is a grant, enforced by the identity provider: an ungranted person is refused an authorisation code, so they never reach the app at all and the app never sees who they are." },
 
   /* ---- agent sandbox ---- */
-  { id:"agent", zone:"sandbox", u:-2.8, v:1.8, w:1.9, d:1.6, h:1.9, label:"MANAGED AGENT", badge:"AI",
-    what:"An Anthropic managed-agent session, started by greenlight's server hooks. It scaffolds from the app template (or clones the existing app for a change), writes the code, pushes a branch, and opens the pull request.",
-    how:"Its system prompt tells it the truth about the pipeline: a human has to approve the PR, and approving it puts it live. For a change request, spec.json updates travel in the same PR as the code.",
-    risk:"The sandbox holds the bot's PAT for the length of a session. That PAT has Contents + Pull-requests on app repos only — no Workflows permission, so even a fully hijacked agent cannot edit the workflow files that read the dispatch secrets, cannot approve its own PR, cannot push main, and holds nothing that reaches prod." },
+  { id:"agent", zone:"sandbox", u:-1.0, v:1.2, w:1.9, d:1.6, h:1.9, label:"BUILD AGENT", badge:"AI",
+    what:"An Anthropic managed-agent session, started by the wizard's server hooks. It clones the empty repo (or the existing app, for a change), writes the code, runs it, and opens the pull request.",
+    how:"It clones over HTTPS and opens its pull request by AGit push to <code>refs/for/main</code>; it has no branch of its own to push. Its prompt tells it the truth: a human has to approve, and approving puts it live. For a change, <code>spec.json</code> updates travel in the same pull request as the code.",
+    risk:"The bot's token is a placeholder inside the sandbox, substituted at egress for <code>git.greenlit.page</code> only, in request headers only. Even a fully hijacked agent holds an account with no repo permission: it can open a pull request and nothing else." },
+  { id:"evaluator", zone:"sandbox", u:-4.8, v:0.6, w:1.6, d:1.4, h:1.5, label:"EVALUATOR", badge:"EV",
+    what:"A second agent with a fresh context. It knows only the spec and the running app, tries the app as a newcomer would, and writes down what it could not work out.",
+    how:"Rostered as the builder's one teammate thread. The builder fixes what it reports, re-pushes, at most two rounds, then drops <code>WIP:</code>. Greenlight lifts the report verbatim off the event stream, so the builder cannot soften it before the reviewer reads it.",
+    risk:"Advisory only. It shares the builder's container, so it is an independent opinion, not a new trust boundary, and it gates nothing: the human still decides." },
 
-  /* ---- sol-apps: the public app repos ---- */
-  { id:"app-repo", zone:"forge", u:5.8, v:4.6, w:2.2, d:1.9, h:2.2, label:"APP REPO ‹slug›", badge:"PR",
-    what:"<span class='mark'>The only copy.</span> One repo per app, and the repo name is the slug is the subdomain. The agent works on branches; main moves only when a human merges — and that merge IS the deploy.",
-    how:"Created by the provisioner's <code>create-app.yml</code> at DRAFT time and protected before anything can write to it. Carries <code>spec.json</code> (the app's contract, tier included) and three workflows from the template: deploy, lint, preview.",
-    risk:"Until 2026-08-26 there were two copies in two orgs and a promoter mirroring between them; the org boundary was what kept the agent away from prod credentials. There is no boundary now, so the repo carries its own: protected main, and a <code>prod</code> environment a branch run cannot enter." },
-  { id:"prod-env", zone:"forge", u:5.6, v:7.8, w:2.1, d:1.6, h:1.4, label:"PROD ENVIRONMENT", badge:"🔒",
-    what:"<span class='mark'>What replaced the org boundary.</span> A GitHub deployment environment on the app repo, holding <code>PB_HOOKS_SSH_KEY</code> — the credential that writes server-side code to prod.",
-    how:"Its deployment branch policy admits <code>main</code> and nothing else, and the reusable deploy job declares <code>environment: prod</code>. A run from a branch is refused entry BEFORE its first step.",
-    risk:"Verified, not assumed: a branch-ref run fails with ZERO steps executed, and a job that omits <code>environment:</code> reads the secret as an empty string. A repo-level secret of the same name would silently undo all of it, which is why the test suite asserts no app has one." },
-  { id:"app-template", zone:"forge", u:10.4, v:1.6, w:1.7, d:1.4, h:1.2, label:"APP-TEMPLATE", badge:"T",
-    what:"What every app repo starts from: index.html, spec.json, and three workflows — deploy, lint, preview. <code>promote.yml</code> was deleted with the promoter.",
-    how:"Generated server-side by GitHub, which is why a token WITHOUT the Workflows permission can still create a repo carrying workflow files — the copy is not a push.",
-    risk:"Template bugs replicate into every new app. The owner guards that made each workflow inert in the wrong org are gone; the guards that matter moved into the reusable deploy workflow, where they are enforced once for everyone rather than copied into every repo." },
-  { id:"bot", zone:"forge", u:13.4, v:3.6, w:1.5, d:1.3, h:1.4, label:"SOL-SANDBOX-PUSHER", badge:"🤖",
-    what:"The GitHub account the agent works as. It pushes branches and opens PRs; that is all it can do.",
-    how:"An org member whose org base permission is <code>none</code>, so membership grants it nothing — access comes only from per-repo grants on app repos. Its PAT has Contents + Pull-requests, not Workflows.",
-    risk:"It cannot approve pull requests — its own or anyone's — so it cannot walk through the gate it creates work for. Membership rather than outside-collaborator is deliberate: an outside-collaborator grant creates a pending INVITATION, and a machine account has nobody to accept it." },
-  { id:"dispatch-tokens", zone:"forge", u:10.6, v:7.0, w:1.9, d:1.4, h:1.1, label:"DISPATCH TOKENS", badge:"⚿",
-    what:"The two credentials a PUBLIC workflow file may reference: PROVISIONER_DISPATCH_TOKEN and PREVIEWER_DISPATCH_TOKEN.",
-    how:"Fine-grained PATs scoped to exactly one private repo each, with <code>actions: write</code> only. All they can do is press a start button.",
-    risk:"Safe there ONLY because the agent's PAT lacks the Workflows permission — it cannot author or edit the file that reads them. That absence is load-bearing; if the bot PAT ever gains Workflows, these have to move. Worst case if leaked: someone starts a provisioner run, which then re-checks everything itself." },
+  /* ---- Forgejo ---- */
+  { id:"app-repo", zone:"forge", u:6.6, v:4.0, w:2.2, d:1.9, h:2.2, label:"APP REPO ‹slug›", badge:"PR",
+    what:"<span class='mark'>The only copy.</span> One public repo per app in the <code>sol-apps</code> org, and the repo name is the slug is the subdomain. Main moves only when a human merges, and that merge IS the deploy.",
+    how:"Created by gl-provisiond at DRAFT time from the app template, protected before anything can write to it, with no topic and no website. Carries <code>spec.json</code> (the app's contract, access mode included). The website and the <code>solhann-app</code> topic are set only once provisioning has finished.",
+    risk:"Nothing in it ever runs on a server: there is no runner, and deployd and provision-app read it only as data. An abandoned draft leaves exactly this, one empty repo, and nothing else on prod." },
+  { id:"protection", zone:"forge", u:4.4, v:9.2, w:2.1, d:1.6, h:1.4, label:"BRANCH PROTECTION", badge:"⌂",
+    what:"The forge's half of the gate. Applied by gl-provisiond to every app it creates and to every app moved from GitHub.",
+    how:"Push to main disabled for everyone, one approval, approvals and merging restricted to the owner, <code>apply_to_admins</code>, stale approvals dismissed, blocked on a rejected review and on an outdated branch, workflow paths protected, tags owner-only. <code>sudo gl-provisiond check &lt;slug&gt;</code> reports drift.",
+    risk:"Necessary, not sufficient: Forgejo lets an instance admin merge past a required review, and any job could forge a status check. So no deploy relies on protection alone; deployd re-verifies the approval on the merged commit." },
+  { id:"app-template", zone:"forge", u:10.8, v:1.4, w:1.7, d:1.4, h:1.2, label:"APP-TEMPLATE", badge:"T",
+    what:"What every app repo is generated from, including the three identity files: <code>pb-auth.js</code>, <code>pb_hooks/identity.pb.js</code> and the identity migration.",
+    how:"A real Forgejo repo marked as a template, no longer a mirror of GitHub's. deployd ships its own trusted copy of the identity files and compares every PocketBase-backed deploy against it, byte for byte.",
+    risk:"Template bugs replicate into every new app. Keeping it in step with GitHub's copy is still by hand: <code>greenlight-app-template</code> publishes only to GitHub." },
+  { id:"bot", zone:"forge", u:13.8, v:3.0, w:1.5, d:1.3, h:1.4, label:"GREENLIGHT-BOT", badge:"BOT",
+    what:"The Forgejo account the agent works as. It opens and updates its own pull request; that is all it can do.",
+    how:"Not a member of anything, and no permission on any repo. Forgejo lets any reader of a public repo open a pull request by AGit push. Its token has <code>write:repository</code> scope only because Forgejo refuses every push, AGit included, to a read-scoped token; the scope is a ceiling over an account that has nothing under it.",
+    risk:"Minted on prod and put straight into the Anthropic vault; it never passes through the wizard. It cannot push a branch, push main, approve anything, or edit anyone else's pull request." },
+  { id:"no-runner", zone:"forge", u:11.2, v:6.6, w:1.9, d:1.4, h:1.1, label:"ACTIONS OFF", badge:"∅",
+    what:"An absence, drawn on purpose. No CI runner exists, Actions are off on app repos, and no secret is stored anywhere in Forgejo.",
+    how:"Forgejo has no equivalent of GitHub's Workflows permission or main-only environments: a pushed workflow would run with whatever secrets the repo held. The answer is that there is nothing to run it and nothing for it to read. Workflow paths are protected on main as a second line.",
+    risk:"This is what replaced GitHub's <code>prod</code> environment. If a runner or a secret is ever added to this forge, invariants 2 and 4 have to be re-derived from scratch." },
 
-  /* ---- preview box ---- */
-  { id:"preview-box", zone:"preview", u:13.0, v:13.8, w:2.1, d:1.6, h:1.6, label:"PREVIEW SERVER", badge:"👁",
-    what:"Serves every open pull request at greenlightdev.solhann.net so a reviewer can USE an app before approving it. Reading 200 lines of HTML says the code matches the spec; it doesn't say the thing works.",
-    how:"PR events dispatch the previewer repo, which SSHes here with a key forced to <code>preview-sync</code>. The box clones the exact commit anonymously and serves it as static files, with <code>.git</code>, <code>.github</code>, <code>pb_hooks</code>, <code>pb_migrations</code> stripped — the same exclusions prod uses. Closed or merged PRs are torn down by the same dispatch.",
-    risk:"This machine runs code no human has approved yet — that is its job — so it is built to be worthless to compromise rather than built like a small prod: no credentials on the box, no root (systemd --user), nothing is ever executed (static files only), and it is a different machine from prod entirely." },
+  /* ---- dev box ---- */
+  { id:"preview-box", zone:"preview", u:13.0, v:13.8, w:2.1, d:1.6, h:1.6, label:"PREVIEW SERVER", badge:"▷",
+    what:"Serves every open pull request at <code>preview.greenlit.page/&lt;slug&gt;-pr&lt;n&gt;/</code> so a reviewer can USE an app before approving it.",
+    how:"deployd tells it <code>preview-sync &lt;slug&gt; &lt;pr&gt; &lt;sha&gt; up|down</code> over a key forced to <code>preview-sync --ssh</code>. The box clones the exact commit anonymously from Forgejo and serves it as static files, with <code>.git</code>, <code>pb_hooks</code> and <code>pb_migrations</code> stripped. Closed or merged pull requests are torn down the same way.",
+    risk:"This machine shows code no human has approved yet, so it is built to be worthless to compromise: no credentials, no root, nothing built or executed, and a different machine from prod." },
 
-  /* ---- sol-apps: the private control plane ---- */
-  { id:"provisioner", zone:"apps", u:5.6, v:20.2, w:2.2, d:1.9, h:2.6, label:"PROVISIONER", badge:"⛭",
-    what:"<span class='mark'>The only path to prod resources.</span> Two workflows either side of the gate. <code>create-app.yml</code> makes a protected repo at DRAFT time and nothing else. <code>provision.yml</code> runs at the first MERGED deploy: it creates the PocketBase jail, the per-app deploy key, and the <code>solhann-app</code> topic.",
-    how:"A private repo holding the org-admin token — the only copy on the platform. Every step is a plain <code>run:</code> script; no marketplace actions, so no third-party code ever runs beside these secrets.",
-    risk:"It carries the check the old promoter never had: before touching prod it asks the repo whether main actually requires an approving review with <code>enforce_admins</code>, and refuses if not. The promoter pushed whatever was on forge main and ASSUMED the gate had held — nothing verified a human had ever looked." },
-  { id:"workflows-repo", zone:"apps", u:13.2, v:20.8, w:2.0, d:1.6, h:1.6, label:"WORKFLOWS (reusable)", badge:"⚙",
-    what:"The one shared deploy pipeline every app calls, and where the two guards now live: the job runs in <code>environment: prod</code>, and skips any push that CREATED the ref (template generation writes main in one push, which once put a bare scaffold on prod).",
-    how:"Checks out, decides whether the app has prod resources yet — the <code>solhann-app</code> topic is the tell, set by the provisioner as its LAST act — then either hands off to the provisioner and deploys nothing, or rsyncs over two separate jailed lanes: the public site to <code>/var/www/apps/&lt;slug&gt;</code>, and (for data apps) <code>pb_hooks</code> + <code>pb_migrations</code> to the instance dir.",
-    risk:"Host keys are pinned via secrets — never <code>ssh-keyscan</code>, which would trust whoever answers. Both SSH identities are forced commands on prod; neither can open a shell or read anything back." },
-  { id:"previewer-repo", zone:"apps", u:13.6, v:25.0, w:1.9, d:1.5, h:1.3, label:"PREVIEWER", badge:"▷",
-    what:"Receives PR dispatches from the app repos and drives the preview box: <code>&lt;slug&gt; &lt;pr&gt; &lt;sha&gt; up|down</code>.",
-    how:"Same pattern as the provisioner on purpose: an event in a public repo fires a dispatch at a private repo that holds the only credential.",
-    risk:"Kept SEPARATE from the provisioner because a repo's blast radius is set by its most powerful secret. PREVIEW_SSH_KEY is near-worthless — jailed to preview-sync on a box with nothing on it — and putting it beside prod-write tokens would raise it to their risk level and falsify the provisioner's \"only path to prod resources\" claim." },
+  /* ---- prod: trusted services ---- */
+  { id:"gl-provisiond", zone:"services", u:5.6, v:21.0, w:2.2, d:1.8, h:2.4, label:"GL-PROVISIOND", badge:"GP",
+    what:"<span class='mark'>Every write to Forgejo.</span> Creates a protected, empty repo at draft time, re-applies protection, and marks an app provisioned (website, then <code>solhann-app</code> and <code>access-&lt;mode&gt;</code>).",
+    how:"A loopback service on 127.0.0.1:3200. The wizard may call <code>POST /v1/apps</code> and nothing else; only deployd, with a different secret, may call <code>/provisioned</code>. It refuses reserved slugs and any name already taken on this box.",
+    risk:"The sole reader of the org-owner token. A wizard compromise can make junk empty repos and nothing more: it cannot touch protection, mark an app, or reach prod." },
+  { id:"owner-token", zone:"services", u:6.2, v:26.2, w:1.9, d:1.4, h:1.1, label:"provisioner.token", badge:"⚿",
+    what:"The org-owner credential for Forgejo, <code>/etc/forgejo/provisioner.token</code>. It exists in exactly one place.",
+    how:"Belongs to <code>gl-provisioner</code>, an org owner and never an instance admin. Handed to gl-provisiond by systemd; even the service's own Unix user cannot read the file.",
+    risk:"It can change protection on every app repo, which is why it is not in the wizard. It still cannot deploy: deployd checks the approval itself." },
+  { id:"deployd", zone:"services", u:11.8, v:22.4, w:2.2, d:1.9, h:2.6, label:"DEPLOYD", badge:"D",
+    what:"<span class='mark'>The only thing that can deploy a Greenlight app.</span> It verifies the merge itself, provisions the app the first time, deploys through the jailed lanes, drives previews and refreshes the shelf.",
+    how:"Listens on 127.0.0.1:3100 for the org webhook and checks the HMAC before parsing. Then it trusts nothing it was told: it re-reads the merge from Forgejo with a read-only token, requires a qualifying approval on the head that merged, binds the commit's archive blob for blob to its tree, and recomputes the identity check against its own copy of the template.",
+    risk:"A site-admin force-merge, an approval added afterwards and a self-approval are each refused, with the reason in the journal and prod untouched. It writes to prod as the unprivileged <code>gl-deploy</code> user, through forced-command keys that cannot read anything back." },
 
-  /* ---- prod box ---- */
-  { id:"caddy", zone:"prod", u:-7.6, v:11.2, w:1.7, d:1.4, h:1.5, label:"CADDY", badge:"⇆",
-    what:"TLS termination and the front door: routes <code>&lt;slug&gt;.solhann.net</code> to that app's static folder, and <code>/api/*</code> of data apps to their loopback PocketBase port.",
-    how:"One Caddy instance, per-app route blocks written by provision-app. PocketBase instances bind 127.0.0.1 only — nothing reaches them except through here.",
+  /* ---- prod: runtime ---- */
+  { id:"caddy", zone:"prod", u:-7.6, v:11.0, w:1.7, d:1.4, h:1.5, label:"CADDY", badge:"⇆",
+    what:"TLS termination and the front door for both domains: every app, the wizard, Forgejo, Keycloak and id-admin.",
+    how:"One Caddy instance, per-app blocks written by provision-app. PocketBase, Forgejo, deployd and gl-provisiond all bind loopback. Each Greenlight app's block also sets <code>frame-ancestors</code> so that only the shelf may embed it.",
     risk:"The only process listening on the public internet. Everything behind it assumes Caddy is the sole entry point, which is enforced by the loopback binding, not by policy." },
-  { id:"greenlight-app", zone:"prod", u:-1.8, v:9.6, w:2.2, d:1.7, h:2.4, label:"GREENLIGHT", badge:"GL",
-    what:"The control panel itself: shelf, build wizard, review board. Its server hooks (six routes under <code>/api/build/*</code>) run the whole show — start agent sessions, ask the provisioner for a protected repo, stream progress back to the builder.",
-    how:"Deliberately just another jailed PocketBase app on this box — same systemd sandbox, same deploy lanes, no special access. All of its power is borrowed from tokens pushed into its environment.",
-    risk:"This is the loop in the diagram: the thing that builds apps is an app on the box it deploys to. It holds NO admin token any more — its strongest credential can start one workflow and push a branch. A full compromise can burn agent money and open pull requests nobody approves; it cannot create prod resources, alter a gate, or ship anything." },
-  { id:"static-files", zone:"prod", u:-7.0, v:16.4, w:1.9, d:1.5, h:1.2, label:"/var/www/apps", badge:"▤",
+  { id:"greenlight-app", zone:"prod", u:0.0, v:10.2, w:2.2, d:1.7, h:2.4, label:"WIZARD", badge:"GL",
+    what:"The build wizard and the shelf at <code>build.greenlit.page</code>. Its server hooks start agent sessions, ask gl-provisiond for a repo, and stream progress and the evaluator's report back to the builder.",
+    how:"Just another jailed PocketBase app on this box, with no special access. Its source is the private <code>greenlight</code> repo on GitHub. <code>GL_FORGE=forgejo</code> selects this path; <code>GL_FORGE=github</code> is the rollback.",
+    risk:"It holds no Forgejo token at all, and no identity credential. Its strongest secret, <code>GL_PROVISIOND_SECRET</code>, can create an empty protected repo. A full compromise can burn agent money and open pull requests nobody approves." },
+  { id:"keycloak", zone:"prod", u:-4.0, v:11.6, w:1.9, d:1.6, h:1.8, label:"KEYCLOAK", badge:"ID",
+    what:"One login for the platform at <code>id.greenlit.page</code>: realm <code>greenlight</code>, local users. Apps are ordinary OIDC clients of it.",
+    how:"Stock Keycloak, closed by default through the realm's own configuration: a person without a grant for an app is refused a code for it. <code>users.role</code> in each app is set from its claim on every login.",
+    risk:"Its admin API is loopback-only, and the admin credential and database password are generated on prod and never read back. There is no OIDC-to-superuser mapping, and there must never be one." },
+  { id:"id-admin", zone:"prod", u:-0.2, v:17.0, w:1.9, d:1.5, h:1.4, label:"ID-ADMIN", badge:"G",
+    what:"The grants service at <code>id-admin.greenlit.page</code>. Who may use which app, and who is an app's admin.",
+    how:"The grant table is the source of truth and the realm is a cache of it; <code>reconcile</code> reports and repairs the difference. Its source is gated on GitHub, and Forgejo holds only a pull mirror of it.",
+    risk:"It decides who may use every app, so it is never in any owner lane and always needs a reviewed merge. Its service-account secret is generated on prod." },
+  { id:"static-files", zone:"prod", u:-7.6, v:17.8, w:1.9, d:1.5, h:1.2, label:"/var/www/apps", badge:"▤",
     what:"Every app's public site, one folder per slug. What Caddy serves.",
-    how:"Written only through the deploy jail: an SSH key forced to <code>rrsync /var/www/apps</code> — one command, one directory, no shell.",
-    risk:"A leaked deploy key can push a bad version of an app that already trusts it, and nothing else: it cannot read files back, and it cannot leave the folder." },
-  { id:"pb-jails", zone:"prod", u:-2.6, v:16.0, w:2.2, d:1.7, h:1.9, label:"POCKETBASE JAILS", badge:"▣",
+    how:"Written only through <code>www-deploy-jail</code>: <code>rrsync -wo -munge</code>, one command, one directory, no shell.",
+    risk:"A leaked deploy key can push a bad version of an app it is already pinned to, and nothing else: it cannot read files back, and it cannot leave the folder." },
+  { id:"pb-jails", zone:"prod", u:-4.0, v:18.2, w:2.2, d:1.7, h:1.9, label:"POCKETBASE JAILS", badge:"▣",
     what:"One PocketBase instance per data app, each in its own locked room. An app asking for another app's files is refused by the kernel, not by a policy.",
-    how:"Per-app unix user <code>pb-&lt;slug&gt;</code>, data at mode 750, systemd sandbox: <code>ProtectSystem=strict</code>, empty capability set, <code>MemoryMax=256M</code>, <code>CPUQuota=50%</code>. Server-side code arrives through a per-app write-only lane (<code>pb-deploy-jail &lt;slug&gt;</code>) pinned to that app's dir.",
-    risk:"The design assumes any app might run code nobody vetted — that is the point of the pipeline feeding it. A hostile app is contained to its own folder, its own database, and its own resource caps." },
-  { id:"superuser-files", zone:"prod", u:-7.4, v:21.0, w:1.9, d:1.4, h:1.1, label:"/etc/pocketbase/*.superuser", badge:"🔑",
-    what:"Per-app PocketBase superuser passwords. Generated ON PROD, kept on prod, and nowhere else.",
-    how:"<code>openssl rand</code> at provision time, root:root 0600, re-applied with <code>superuser upsert</code> on EVERY provision run — so a drifted password self-heals.",
-    risk:"Nothing reads these back off the box and no lane may ever be added that does. A copy anywhere else would be a second, staler, more exposed version of a live prod credential. Tools that need superuser auth run on prod instead." },
-  { id:"provision-app", zone:"prod", u:-2.8, v:22.2, w:2.1, d:1.7, h:1.7, label:"PROVISION-APP", badge:"⛭",
-    what:"Creates or repairs an app's jail: unix user, systemd unit, Caddy route, superuser password, deploy-key install. Idempotent — safe to re-run forever.",
-    how:"Root-owned script with SSH forced-command entry points: the laptop's key forces <code>--ssh</code>; the provisioner's CI key forces <code>--ssh-provision-only</code>, a narrower mode that additionally refuses <code>--push-env</code> (which rewrites a live app's runtime secrets and takes the slug from the caller).",
-    risk:"The forced commands are the jail, and they are unchanged by the one-org migration — which is why that migration needed no prod-side change at all. Neither SSH identity gets a shell, and the CI lane cannot touch runtime secrets even if the provisioner is compromised." },
-  { id:"pb-migrate", zone:"prod", u:0.2, v:13.0, w:1.7, d:1.4, h:1.3, label:"PB-MIGRATE", badge:"⟳",
+    how:"Per-app Unix user <code>pb-&lt;slug&gt;</code>, data at mode 750, systemd sandbox with an empty capability set and memory and CPU caps. Server-side code arrives through a per-app write-only lane (<code>pb-deploy-jail &lt;slug&gt;</code>) pinned to that app's directory.",
+    risk:"The design assumes any app might run code nobody vetted. A hostile app is contained to its own folder, its own database and its own resource caps." },
+  { id:"pb-migrate", zone:"prod", u:-0.2, v:23.6, w:1.7, d:1.4, h:1.3, label:"PB-MIGRATE", badge:"⟳",
     what:"Applies schema changes safely: stop the app, snapshot the data, apply migrations one at a time, quarantine any failure, health-check, carry on.",
-    how:"A systemd path watcher per app. Backups go to <code>/var/backups</code> (last ten kept); a failed migration moves to <code>pb_migrations_failed/</code> so the app recovers on its previous schema instead of crash-looping.",
-    risk:"Schema is migrations-only: files written by the local pb-dev workbench, committed, and shipped through the same reviewed pipeline as code. Nobody edits live schema by hand — not via the dashboard, not via the API." },
+    how:"A systemd path watcher per app. Backups go to <code>/var/backups</code>; a failed migration moves to <code>pb_migrations_failed/</code> so the app recovers on its previous schema instead of crash-looping.",
+    risk:"Schema is migrations-only: files generated on a local PocketBase, committed, and shipped through the same reviewed pull request as code. Nobody edits live schema by hand." },
+  { id:"superuser-files", zone:"prod", u:-7.6, v:24.6, w:1.9, d:1.4, h:1.1, label:"*.superuser", badge:"⚿",
+    what:"Per-app PocketBase superuser passwords, <code>/etc/pocketbase/&lt;slug&gt;.superuser</code>. Generated ON PROD, kept on prod, and nowhere else.",
+    how:"Generated at provision time, root-only, re-applied on every provision run so a drifted password self-heals.",
+    risk:"Nothing reads these back off the box and no lane may ever be added that does. The same rule covers every OIDC client secret and Keycloak's own credentials." },
+  { id:"provision-app", zone:"prod", u:-3.8, v:24.8, w:2.1, d:1.7, h:1.7, label:"PROVISION-APP", badge:"⚙",
+    what:"Creates or repairs an app's prod resources: Unix user, systemd unit, Caddy block, superuser password, and the app's OIDC client. Idempotent, safe to re-run.",
+    how:"Root-owned, reached only through forced commands: the laptop's key forces <code>--ssh</code>; deployd's key forces <code>--ssh-provision-only</code>, which also refuses <code>--push-env</code>. It re-derives everything itself, reading the app from Forgejo, and records the host once in <code>/etc/greenlight/hosts</code>.",
+    risk:"Since 2026-10-14 it refuses, in every mode, an app served off <code>GREENLIGHT_DOMAIN</code> or already taken by the owner's own apps, so the two halves of the box cannot reach each other's apps." },
+
+  /* ---- GitHub ---- */
+  { id:"platform-repos", zone:"github", u:-2.4, v:33.0, w:2.2, d:1.7, h:1.8, label:"PLATFORM REPOS", badge:"P",
+    what:"The platform's own source, on GitHub by the owner's decision of 2026-09-29: <code>platform</code>, <code>greenlight</code>, <code>id-admin</code>, <code>provisioner</code>, <code>workflows</code>, <code>previewer</code>, and this page.",
+    how:"<code>id-admin</code> and this page are review-gated with <code>enforce_admins</code>. <code>platform</code> and <code>greenlight</code> are private and unprotected: the owner pushes to main.",
+    risk:"Anything holding the owner's GitHub login, every session on the laptop included, can deploy the wizard with no review. Accepted for this instance; it does not reach a Greenlight app's server side." },
+  { id:"github-pipeline", zone:"github", u:-7.2, v:32.8, w:2.0, d:1.6, h:1.6, label:"GITHUB PIPELINE", badge:"⚙",
+    what:"The GitHub-era pipeline, kept for what has not moved: <code>workflows</code>' reusable deploy, the <code>prod</code> environment, and the provisioner and previewer for test fixtures such as <code>deploy-test</code>.",
+    how:"A push or merge to main runs <code>deploy.yml</code>, which may enter the main-only <code>prod</code> environment for <code>PB_HOOKS_SSH_KEY</code> and rsyncs over the same jailed lanes as deployd.",
+    risk:"The org secrets <code>SERVER_SSH_KEY</code> and friends are visible to every public repo in the org; their forced command on prod, <code>owner-lane</code>, is what contains them. It no longer deploys the owner's own apps, which run <code>sol-apps/create</code>'s <code>simple.yml</code>." },
 
   /* ---- laptop ---- */
   { id:"platform-cli", zone:"laptop", u:-15.4, v:21.4, w:1.9, d:1.5, h:1.6, label:"PLATFORM CLI", badge:"$",
-    what:"The control plane: <code>create-app</code>, <code>pb-provision</code>, <code>pb-backups</code>, <code>greenlight-backfill</code>, <code>projects-sync</code>. Also the owner lane — apps only the owner can write to are edited here and pushed straight to sol-apps main.",
-    how:"Bash scripts in the private platform repo. <code>app-lane.sh</code> is the one definition of which apps are in the owner lane; <code>greenlight-backfill &lt;slug&gt;</code> takes an app out of it, binding admins before the agent is let in.",
-    risk:"The owner lane bypasses the review gate by definition, on purpose (decided 2026-09-13): the bot cannot write to these repos, they have no spec.json, and id-admin is never one. Residual: anything holding the owner's GitHub login — every session on this laptop — can deploy them unreviewed, as it already can the infra repos. Every app the agent can reach still binds admins, and a guard fails if one does not." },
-  { id:"pb-dev", zone:"laptop", u:-11.9, v:22.8, w:1.7, d:1.4, h:1.3, label:"PB-DEV", badge:"⌂",
-    what:"A throwaway local PocketBase where all schema editing happens. Its dashboard writes <code>pb_migrations/</code> files, which are committed like any other code.",
-    how:"<code>platform/bin/pb-dev</code> from the app checkout, dashboard on 127.0.0.1. The generated migration files are the ONLY way schema reaches prod.",
-    risk:"Rehearse on a copy, ship the recording. Prod never sees an experimental schema edit — it sees a migration that already ran once, applied behind a fresh backup." },
-  { id:"pb-secret-store", zone:"laptop", u:-15.6, v:25.2, w:1.9, d:1.4, h:1.2, label:"PB-SECRET STORE", badge:"⚿",
-    what:"Only what prod must NOT generate for itself: greenlight's API + forge tokens, per-app runtime hook secrets, S3 backup credentials, local pb-dev passwords.",
+    what:"The control plane: <code>pb-provision</code>, <code>pb-backups</code>, <code>greenlight-backfill</code>, <code>projects-sync</code>, <code>pb-schema</code> (inspection only).",
+    how:"Bash scripts in the private <code>platform</code> repo. <code>app-lane.sh</code> is the one definition of which apps are gated; <code>projects-sync check</code> fails if any is not.",
+    risk:"The owner's own apps and their tooling left Greenlight on 2026-10-12 and live in <code>sol-apps/create</code>. What stays here is the rule that tells the two apart." },
+  { id:"pb-dev", zone:"laptop", u:-11.9, v:22.4, w:1.7, d:1.4, h:1.3, label:"PB-DEV", badge:"⌂",
+    what:"A throwaway local PocketBase for the platform's own apps. Its dashboard writes <code>pb_migrations/</code> files, which are committed like any other code.",
+    how:"<code>platform/bin/pb-dev</code> from the app checkout, by path, with <code>GREENLIGHT_IDENTITY_MODE=local</code>. The build agent does the same inside its sandbox for Greenlight's apps.",
+    risk:"Rehearse on a copy, ship the recording. Prod never sees an experimental schema edit, only a migration that already ran once, applied behind a fresh backup." },
+  { id:"pb-secret-store", zone:"laptop", u:-15.6, v:26.6, w:1.9, d:1.4, h:1.2, label:"PB-SECRET STORE", badge:"⚿",
+    what:"Only what prod must NOT generate for itself: runtime hook secrets, the wizard's API keys, S3 backup credentials, local pb-dev passwords.",
     how:"<code>~/.config/solhann/pb-secrets</code>, dir 700 / file 600, never in any repo. Runtime secrets reach an app via <code>pb-provision &lt;slug&gt; --push-env</code>.",
-    risk:"Superuser passwords were deliberately evicted from here — prod owns those now. Bare <code>&lt;slug&gt;</code> entries are leftovers, removed with <code>pb-secret rm</code> only after that app has been re-provisioned (before that, they are the only copy)." },
-  { id:"ssh-lanes", zone:"laptop", u:-12.0, v:26.6, w:1.8, d:1.5, h:1.5, label:"SSH LANES", badge:"⇶",
-    what:"Three lanes to prod, most-jailed first: <code>pb-provision</code> (forced command) · the provisioner's CI key (provision-only, refuses --push-env) · <code>ssh prod</code> (interactive shell as sol).",
-    how:"Root login is disabled, but root ACCESS is not: <code>ssh -t prod 'sudo …'</code> works with a password only the owner can type. That is how bootstrap and /usr/local/bin work gets done.",
-    risk:"The write-only property holds across all three lanes: none of them can read a superuser password back off the box. One sharp edge, found 2026-08-26: <code>-i key -o IdentitiesOnly=yes</code> does NOT stop ssh also offering the key named in <code>~/.ssh/config</code> — which here is unrestricted on prod. When the jailed key could not be signed with, ssh silently fell through to it and gave a shell instead of the jail. Every lane now passes <code>-F /dev/null</code>, turning silent escalation into an honest failure." },
+    risk:"Nothing prod generates is here: superuser passwords, OIDC client secrets, Keycloak's and gl-provisiond's secrets all stay on prod, and a push keeps them and refuses them as input." },
+  { id:"ssh-lanes", zone:"laptop", u:-12.0, v:27.6, w:1.8, d:1.5, h:1.5, label:"SSH LANES", badge:"⇶",
+    what:"Lanes to prod, most-jailed first: <code>pb-provision</code> (forced command) and <code>ssh prod</code> (interactive shell as sol).",
+    how:"Root login is disabled, but root ACCESS is not: <code>ssh -t prod 'sudo …'</code> works with a password only the owner can type. Forgejo's server side (<code>flip-app.sh</code>, <code>remove-repo.sh</code>, the installers) is run this way.",
+    risk:"Write-only throughout: no lane can read a prod-generated secret back. Every jailed lane passes <code>-F /dev/null</code>, because <code>IdentitiesOnly</code> once let ssh fall through to an unrestricted key. Residual: any shell as <code>sol</code> can use the provisioning sudo rule, so the key's passphrase does not gate it." },
 ];
 
 const CRED_COLORS = { none:"var(--olive)", scoped:"var(--blue)", prodwrite:"var(--red)", human:"var(--amber)" };
@@ -387,101 +412,128 @@ const CRED_DASH  = { none:"", scoped:"7 4", human:"1.5 4", prodwrite:"" };
 const CRED_LABEL = {
   none:"no credential (anonymous / local)",
   scoped:"scoped or jailed credential",
-  prodwrite:"prod-writing credential",
+  prodwrite:"gate-altering credential",
   human:"human action",
 };
 
 const EDGES = [
   { id:"e_build_start", from:"builder", to:"greenlight-app", cls:"human",
     label:"describe / answer", carries:"the idea, interview answers",
-    cred:"Logged-in PocketBase session over HTTPS",
-    note:"The builder talks to the wizard; greenlight's hooks stream agent progress back over SSE. Nothing the builder types reaches prod — it lands on a branch, behind the gate." },
+    cred:"Logged-in wizard session over HTTPS",
+    note:"The builder talks to the wizard; its hooks stream agent progress back. Nothing the builder types reaches prod: it lands in a pull request, behind the gate." },
   { id:"e_pushenv", from:"pb-secret-store", to:"greenlight-app", cls:"scoped", aux:true,
-    label:"--push-env", carries:"runtime secrets (API + GitHub tokens)",
-    cred:"pb-provision --push-env over the jailed laptop SSH lane",
-    note:"How greenlight gets its power: tokens are pushed into its jailed environment from the laptop's secret store. The provisioner's narrower CI lane refuses this flag entirely." },
+    label:"--push-env", carries:"the wizard's runtime secrets (Anthropic key, agent and vault ids)",
+    cred:"pb-provision --push-env over the jailed laptop lane",
+    note:"How the wizard gets what it holds. The push keeps <code>GL_PROVISIOND_SECRET</code> and <code>OIDC_*</code>, which prod generated, and refuses them as input, so the laptop never knows them." },
+  { id:"e_gl_provisiond", from:"greenlight-app", to:"gl-provisiond", cls:"scoped",
+    label:"draft: POST /v1/apps", carries:"slug, description",
+    cred:"GL_PROVISIOND_SECRET, generated on prod: this one call and nothing else",
+    note:"The wizard asks for a repo; it holds no Forgejo token of its own. Worst case if the secret leaks: junk empty repos, nothing on prod, and nothing deployable without a review." },
+  { id:"e_token", from:"owner-token", to:"gl-provisiond", cls:"none", thin:true,
+    label:"LoadCredential", carries:"the org-owner token",
+    cred:"systemd, locally",
+    note:"Handed over by systemd at start. Nothing else on the box reads it." },
+  { id:"e_provisiond_repo", from:"gl-provisiond", to:"app-repo", cls:"prodwrite",
+    label:"create · protect · mark", carries:"the repo, its protection, then the mark that prod exists",
+    cred:"The org-owner token, held only here",
+    note:"At draft: generate from the template, public, main protected, no topic, no website. After the first provisioning: the website, then <code>solhann-app</code> and <code>access-&lt;mode&gt;</code>, read back. The topic is last, so its presence means provisioning finished." },
+  { id:"e_template", from:"app-template", to:"app-repo", cls:"none", thin:true,
+    label:"generate", carries:"index.html, spec.json, the identity files",
+    cred:"Forgejo-internal, at gl-provisiond's request",
+    note:"A template generate, not a push. Nothing is granted to the bot." },
   { id:"e_gl_agent", from:"greenlight-app", to:"agent", cls:"scoped",
     label:"start session", carries:"spec + kickoff instructions",
-    cred:"Anthropic API key (in greenlight's env)",
-    note:"Greenlight starts a managed-agent session and relays the interview. The kickoff tells the agent the merge ships — no false comfort about later checkpoints." },
-  { id:"e_gl_factory", from:"greenlight-app", to:"provisioner", cls:"scoped",
-    label:"draft → dispatch factory", carries:"slug, description",
-    cred:"PROVISIONER_DISPATCH_TOKEN — one repo, actions:write only",
-    note:"Greenlight used to create the repo itself, holding an org-admin PAT that could equally have REMOVED branch protection from every repo in the org — it could dismantle the gate it exists to enforce. It now asks, and waits until protection is visible before a session is allowed to exist." },
+    cred:"Anthropic API key (in the wizard's env)",
+    note:"The wizard starts a managed-agent session and relays the interview. The kickoff tells the agent the merge ships, and how AGit pull requests behave." },
   { id:"e_agent_repo", from:"agent", to:"app-repo", cls:"scoped",
-    label:"push branch · open PR", carries:"the app's code",
-    cred:"Bot PAT: Contents + Pull-requests, NO Workflows permission",
-    note:"The missing Workflows permission is load-bearing: the agent cannot author or edit the workflow files that read the dispatch secrets, so it can never route one into code it controls. Verified — a push adding a workflow is refused outright. It also cannot approve its own PR." },
-  { id:"e_repo_previewer", from:"app-repo", to:"previewer-repo", cls:"scoped",
-    label:"PR event → dispatch", carries:"slug, PR number, commit sha",
-    cred:"PREVIEWER_DISPATCH_TOKEN — one repo, actions:write only",
-    note:"Opened, updated and closed PRs all fire the same dispatch, so previews appear, update and tear down with no accumulation." },
-  { id:"e_previewer_box", from:"previewer-repo", to:"preview-box", cls:"scoped",
-    label:"up / down", carries:"‹slug› ‹pr› ‹sha› up|down",
-    cred:"PREVIEW_SSH_KEY, forced to preview-sync — cannot get a shell",
-    note:"The only credential in the preview system, and it is jailed to a box that holds nothing. Host key pinned, never scanned." },
+    label:"clone · AGit push", carries:"the app's code (and migrations)",
+    cred:"greenlight-bot token from the Anthropic vault: write:repository over an account with no permission",
+    note:"<code>git push origin HEAD:refs/for/main</code> opens a <code>WIP:</code> pull request. The bot cannot push a branch or main, and a later push does not change the pull request's title or body." },
+  { id:"e_agent_eval", from:"agent", to:"evaluator", cls:"none",
+    label:"spec + running app", carries:"the spec and a local URL",
+    cred:"None: a teammate thread in the same container",
+    note:"The evaluator hasn't seen the conversation, on purpose. It leaves the repository and the pull request alone." },
+  { id:"e_eval_gl", from:"evaluator", to:"greenlight-app", cls:"none",
+    label:"report, verbatim", carries:"findings, for the builder and the reviewer",
+    cred:"None: lifted off the session's event stream",
+    note:"The builder fixes and re-pushes, at most two rounds. The report reaches the reviewer unedited. Advisory only." },
+  { id:"e_hook", from:"app-repo", to:"deployd", cls:"none",
+    label:"webhook: PR + merge", carries:"pull request and push events",
+    cred:"HMAC, checked before parsing; then deployd's own read-only token",
+    note:"The delivery is only a trigger. deployd re-reads everything from Forgejo: that the pushed commit is main's head and the merge commit of a pull request with a qualifying approval." },
+  { id:"e_deployd_preview", from:"deployd", to:"preview-box", cls:"scoped",
+    label:"preview up / down", carries:"‹slug› ‹pr› ‹sha› up|down",
+    cred:"deployd's preview key, forced to preview-sync --ssh, from prod's IP only",
+    note:"Open pull requests are served, closed and merged ones taken down. A newer head supersedes a queued one, so a stale delivery can only re-serve the current head." },
   { id:"e_repo_box", from:"app-repo", to:"preview-box", cls:"none",
-    label:"anonymous clone", carries:"the PR's exact commit",
-    cred:"None — public repo, anonymous git",
-    note:"The box pulls; nothing pushes to it. It clones the commit, strips .git/.github/pb_hooks/pb_migrations, and serves static files only." },
+    label:"anonymous clone", carries:"the pull request's exact commit",
+    cred:"None: public repo, anonymous git",
+    note:"The box pulls by commit id; nothing pushes to it. It strips .git, pb_hooks and pb_migrations and serves static files only." },
   { id:"e_rev_box", from:"reviewer", to:"preview-box", cls:"human",
     label:"try the app", carries:"clicks",
-    cred:"None — the preview is public-ish by design",
-    note:"The reviewer uses the actual running thing at greenlightdev.solhann.net before deciding. The diff says what changed; the preview says whether it works." },
+    cred:"None: the preview is public by design",
+    note:"The reviewer uses the running thing before deciding. The diff says what changed; the preview says whether it works." },
   { id:"e_rev_gate", from:"reviewer", to:"app-repo", cls:"human", gate:true,
-    label:"APPROVE + MERGE — THE GATE", carries:"the one human decision",
-    cred:"The reviewer's own GitHub account",
-    note:"One approving review, enforce_admins, bot cannot self-approve. Verified that enforce_admins refuses BOTH a direct push and the admin merge override — gh advertises --admin as the escape hatch for exactly this, and it does not work. After this click nobody looks again. Owner-lane apps do not pass through this edge: see the owner lane." },
-  { id:"e_deploy_provisioner", from:"workflows-repo", to:"provisioner", cls:"scoped",
-    label:"no topic → dispatch", carries:"slug (validated again on arrival)",
-    cred:"PROVISIONER_DISPATCH_TOKEN — one repo, actions:write only",
-    note:"Only on the FIRST merged deploy, and only because the app has no solhann-app topic yet. That pass deploys nothing: there is no vhost and no instance to deploy to, so an rsync would publish files to a URL that does not serve them and still look green." },
-  { id:"e_provisioner_repo", from:"provisioner", to:"app-repo", cls:"prodwrite",
-    label:"create · protect · then topic", carries:"the repo itself, then the mark that prod exists",
-    cred:"ORG_ADMIN_TOKEN — the only copy, held only here",
-    note:"Both halves of the provisioner's job land here. At draft: generate from the template, protect main, grant the bot, create the empty prod environment. At the first reviewed merge: set the solhann-app topic, LAST, so its presence means provisioning finished rather than started." },
-  { id:"e_provisioner_prov", from:"provisioner", to:"provision-app", cls:"scoped",
-    label:"first merge: provision", carries:"slug",
-    cred:"CI SSH key forced to provision-app --ssh-provision-only",
-    note:"Creates the jail, generates the superuser on-box, installs the per-app deploy key. The forced mode refuses --push-env, so this lane can never rewrite a live app's runtime secrets." },
-  { id:"e_provisioner_env", from:"provisioner", to:"prod-env", cls:"prodwrite",
-    label:"install deploy key", carries:"the private half of a fresh per-app keypair",
-    cred:"ORG_ADMIN_TOKEN writing an ENVIRONMENT secret",
-    note:"The key goes into the prod environment, never a repo secret. A repo secret is readable by ANY workflow run — including one the agent triggers from its own branch — and that difference is the whole of what replaced the org boundary." },
-  { id:"e_merge_deploy", from:"app-repo", to:"workflows-repo", cls:"none",
-    label:"merge → deploy.yml → reusable", carries:"the checkout",
-    cred:"GitHub-internal (secrets: inherit at run time)",
-    note:"Every app's deploy.yml is a ten-line caller. Merging is what fires it — there is no promotion step in between any more, which is why the reviewer's click is described as the deploy rather than a step before one." },
-  { id:"e_wf_static", from:"workflows-repo", to:"static-files", cls:"scoped",
-    label:"rsync public site", carries:"static files (README, .git, pb_hooks excluded)",
-    cred:"SERVER_SSH_KEY, forced to rrsync /var/www/apps",
-    note:"One command, one directory. A leaked key can push a bad version of an app; it cannot read anything back or leave the folder." },
-  { id:"e_wf_hooks", from:"workflows-repo", to:"pb-jails", cls:"scoped",
+    label:"APPROVE + MERGE · THE GATE", carries:"the one human decision",
+    cred:"The reviewer's own Forgejo account",
+    note:"One approval, by someone other than the author, before the merge. Protection enforces it on the forge and deployd enforces it again on the merged commit. After this click nobody looks again." },
+  { id:"e_deployd_prov", from:"deployd", to:"provision-app", cls:"scoped",
+    label:"first merge: provision", carries:"slug, reviewed sha, access mode",
+    cred:"deployd's key, forced to provision-app --ssh-provision-only",
+    note:"Only for an app with no host recorded yet, with a deliberate access mode in <code>spec.json</code>, a review-gated main and an intact identity layer. Never <code>--push-env</code>." },
+  { id:"e_deployd_mark", from:"deployd", to:"gl-provisiond", cls:"scoped",
+    label:"mark provisioned", carries:"the app's URL and access mode",
+    cred:"X-GL-Deploy-Secret: refused everywhere else, and never equal to the wizard's",
+    note:"A mark that fails is kept on disk and landed before that app's next deploy." },
+  { id:"e_deployd_www", from:"deployd", to:"static-files", cls:"scoped",
+    label:"rsync public site", carries:"static files",
+    cred:"gl-deploy key forced to deployd-lane www, then www-deploy-jail",
+    note:"<code>deployd-lane</code> admits only a provisioned app recorded under <code>GREENLIGHT_DOMAIN</code>, so deployd cannot touch the owner's own apps." },
+  { id:"e_deployd_pb", from:"deployd", to:"pb-jails", cls:"scoped",
     label:"rsync hooks + migrations", carries:"pb_hooks/ + pb_migrations/",
-    cred:"Per-app PB_HOOKS_SSH_KEY, forced to pb-deploy-jail ‹slug›, write-only",
-    note:"Each data app has its OWN key pinned to its own dir — a hostile app's key can only overwrite its own server-side code, never a neighbour's. Write-only: it can add behaviour but never read stored data, so shipped code can't quietly exfiltrate the database." },
+    cred:"gl-deploy key forced to deployd-lane pb, then pb-deploy-jail ‹slug›",
+    note:"Each app's lane is pinned to its own directory and is write-only: it can add behaviour but never read stored data back." },
+  { id:"e_shelf", from:"deployd", to:"greenlight-app", cls:"none", thin:true,
+    label:"shelf refresh", carries:"an empty POST",
+    cred:"None: loopback, no data",
+    note:"So a new app is on the shelf when its site is up. Best effort; a failure is logged and changes nothing." },
   { id:"e_migrate", from:"pb-migrate", to:"pb-jails", cls:"none",
-    label:"snapshot → apply → health", carries:"schema changes",
+    label:"snapshot · apply · health", carries:"schema changes",
     cred:"Local to the box (root-owned watcher)",
-    note:"Backup before every touch, one migration at a time, failures quarantined so the app recovers on its previous schema. A change gone wrong is a restore away, not a disaster." },
+    note:"Backup before every touch, one migration at a time, failures quarantined so the app keeps its previous schema." },
   { id:"e_visit", from:"visitor", to:"caddy", cls:"none",
-    label:"HTTPS", carries:"requests to ‹slug›.solhann.net",
-    cred:"None (per-app auth happens inside PocketBase rules)",
+    label:"HTTPS", carries:"requests to ‹slug›.greenlit.page",
+    cred:"None at the door; identity comes from Keycloak",
     note:"Caddy is the only public listener; each request is routed to one app's folder or loopback port." },
   { id:"e_caddy_static", from:"caddy", to:"static-files", cls:"none", thin:true,
     label:"serve files", carries:"the public site", cred:"Local read",
     note:"Static content is read straight from the app's folder." },
   { id:"e_caddy_pb", from:"caddy", to:"pb-jails", cls:"none", thin:true,
     label:"proxy /api", carries:"API traffic", cred:"Loopback proxy",
-    note:"Data apps' API traffic is proxied to 127.0.0.1:‹port›. Instances are unreachable except through here." },
-  { id:"e_legacy_push", from:"platform-cli", to:"app-repo", cls:"human", aux:true,
-    label:"owner lane: direct push", carries:"owner-only app code",
-    cred:"The owner's own GitHub account",
-    note:"Apps only the owner can write to (bot below write, no spec.json, not id-admin) keep a protected main with admins unbound, so the owner's push is the deploy. Reopened 2026-09-13 after a spell when even these needed a pull request the owner could not approve. provision.yml still refuses such an app, so this lane cannot reach a first provisioning, and greenlight-backfill binds admins before the agent is let in." },
-  { id:"e_schema", from:"pb-dev", to:"app-repo", cls:"human", aux:true,
-    label:"commit pb_migrations", carries:"recorded schema changes",
-    cred:"The same reviewed pull request as any other change",
-    note:"Schema edits are rehearsed locally, recorded as migration files, and shipped like code. Never edited on prod — not in the dashboard, not over the API." },
+    note:"Data apps' API traffic goes to 127.0.0.1:‹port›. Instances are unreachable except through here." },
+  { id:"e_caddy_kc", from:"caddy", to:"keycloak", cls:"none", thin:true,
+    label:"id.greenlit.page", carries:"the sign-in page", cred:"Loopback proxy",
+    note:"The visitor signs in here once. Keycloak's admin API is not routed: it is loopback-only." },
+  { id:"e_app_oidc", from:"pb-jails", to:"keycloak", cls:"scoped",
+    label:"OIDC code flow", carries:"authorisation code, then tokens",
+    cred:"The app's own OIDC client secret, generated on prod",
+    note:"A person without a grant for this app is refused a code, so the app never sees them. The role claim sets <code>users.role</code> on every login." },
+  { id:"e_prov_oidc", from:"provision-app", to:"keycloak", cls:"scoped",
+    label:"register client", carries:"the app's OIDC client",
+    cred:"Keycloak admin credential, on prod only",
+    note:"Client registration is a provisioning act. The secret goes straight into the app's env on prod; the wizard never holds an identity credential." },
+  { id:"e_grants", from:"id-admin", to:"keycloak", cls:"scoped",
+    label:"mirror grants", carries:"who may use which app",
+    cred:"The grants service's service-account secret, generated on prod",
+    note:"The grant table is the truth and the realm a cache of it; <code>reconcile</code> repairs any difference." },
+  { id:"e_rev_grant", from:"reviewer", to:"id-admin", cls:"human", aux:true,
+    label:"grant access", carries:"a person, an app, a role",
+    cred:"An admin's own login, through Keycloak",
+    note:"App-level admin is a granted role too. PocketBase superusers stay the break-glass lane, with no OIDC mapping." },
+  { id:"e_super", from:"provision-app", to:"superuser-files", cls:"none", thin:true,
+    label:"generate + upsert", carries:"superuser password (never leaves the box)",
+    cred:"Root, locally",
+    note:"Generated on prod, re-applied every run, readable by root only." },
   { id:"e_provision_lane", from:"platform-cli", to:"provision-app", cls:"scoped", aux:true,
     label:"pb-provision (jailed)", carries:"provision / repair / deploy-key / push-env",
     cred:"Laptop SSH key forced to provision-app --ssh",
@@ -489,89 +541,121 @@ const EDGES = [
   { id:"e_sudo", from:"ssh-lanes", to:"provision-app", cls:"human", aux:true,
     label:"ssh -t prod 'sudo …'", carries:"root-level maintenance",
     cred:"Interactive shell as sol + sudo password (root login itself disabled)",
-    note:"The one honest superpower: bootstrap, /usr/local/bin edits, break-glass. Gated on a password only the owner can type." },
-  { id:"e_super", from:"provision-app", to:"superuser-files", cls:"none", thin:true,
-    label:"generate + upsert", carries:"superuser password (never leaves the box)",
-    cred:"Root, locally",
-    note:"Generated on prod, re-applied every run, readable by root only. No SSH lane can read it back, and none may be added that does." },
+    note:"Bootstrap, the Forgejo installers, moving or removing an app, break-glass. Gated on a password only the owner can type." },
+  { id:"e_owner_push", from:"platform-cli", to:"platform-repos", cls:"human", aux:true,
+    label:"push / pull request", carries:"platform source",
+    cred:"The owner's own GitHub account",
+    note:"<code>greenlight</code> and <code>platform</code> take a push to main. <code>id-admin</code> and this page need a reviewed pull request that someone other than the owner authored." },
+  { id:"e_gh_deploy", from:"platform-repos", to:"github-pipeline", cls:"none",
+    label:"main → deploy.yml", carries:"the checkout",
+    cred:"GitHub-internal (secrets: inherit at run time)",
+    note:"Each repo's deploy.yml is a short caller of <code>sol-apps/workflows</code>." },
+  { id:"e_gh_www", from:"github-pipeline", to:"static-files", cls:"scoped",
+    label:"rsync public site", carries:"static files",
+    cred:"SERVER_SSH_KEY (the org key, or the wizard's own), forced to write-only rrsync",
+    note:"The same write-only jail deployd uses, entered by a different key. The org key's forced command, <code>owner-lane</code>, belongs to the owner's side of the box." },
+  { id:"e_gh_pb", from:"github-pipeline", to:"pb-jails", cls:"scoped",
+    label:"rsync hooks", carries:"pb_hooks/ + pb_migrations/",
+    cred:"Per-app PB_HOOKS_SSH_KEY, forced to pb-deploy-jail ‹slug›",
+    note:"On id-admin it lives in the main-only <code>prod</code> environment, which a branch run cannot enter. On the private wizard repo, which only the owner can write to, it is a repo secret." },
+  { id:"e_schema", from:"pb-dev", to:"platform-repos", cls:"human", aux:true,
+    label:"commit pb_migrations", carries:"recorded schema changes",
+    cred:"The same push or pull request as any other change",
+    note:"For the platform's own apps. Greenlight's apps get theirs from the agent, in the pull request." },
 ];
 
 const FLOWS = {
   build: {
-    title:"NEW APP — greenlight, end to end",
-    intro:"The full governed path, verified end to end with <code>one-org-smoke</code> on 2026-08-26: idea → agent → human gate → live at ‹slug›.solhann.net, with no manual deploy step anywhere. Nothing exists on the server until the merge.",
+    title:"NEW APP · Greenlight on Forgejo, end to end",
+    intro:"The governed path, proved end to end with <code>forge-proof</code> on 2026-10-10: a sentence in the wizard, an agent's pull request, one human approval, and a live app at ‹slug›.greenlit.page, with no manual deploy step anywhere. Nothing exists on the server until the merge.",
     steps:[
-      ["e_build_start","A builder opens the wizard and describes the app; the agent interviews them through greenlight's hooks."],
-      ["e_gl_factory","Greenlight checks the slug, then asks the provisioner factory for the repo — it holds no admin token of its own. It waits until protection is VISIBLE before letting a session exist: the repo appears seconds before it is locked down, so ‘the repo is there’ is exactly the wrong signal to proceed on."],
-      ["e_gl_agent","Greenlight starts a managed-agent session with the spec and a kickoff that says: the merge ships."],
-      ["e_agent_repo","The agent writes the app and opens a pull request as the bot. It cannot merge it, approve it, or touch workflows."],
-      ["e_repo_previewer","The PR event dispatches the previewer — a start button and nothing more."],
-      ["e_previewer_box","The previewer tells the preview box to bring this PR up."],
+      ["e_build_start","A builder opens the wizard and describes the app."],
+      ["e_gl_provisiond","The wizard asks gl-provisiond for the repo. It holds no Forgejo token of its own."],
+      ["e_provisiond_repo","gl-provisiond creates sol-apps/‹slug› from the template and protects main before anything can write to it. No topic, no website, nothing on the server: an abandoned draft leaves one empty repo."],
+      ["e_gl_agent","The wizard starts a build-agent session with the spec and a kickoff that says: the merge ships."],
+      ["e_agent_repo","The agent clones, builds, and opens a WIP pull request by AGit push. It cannot merge, approve or push a branch."],
+      ["e_agent_eval","A fresh-context evaluator tries the running app as a newcomer would."],
+      ["e_eval_gl","Its report goes to the wizard verbatim. The builder fixes, re-pushes, and drops WIP."],
+      ["e_deployd_preview","deployd sees the pull request event and tells the dev box to serve its head."],
       ["e_repo_box","The box clones the exact commit anonymously and serves it as static files. No secrets, no execution."],
-      ["e_rev_box","The reviewer tries the running app at greenlightdev.solhann.net."],
-      ["e_rev_gate","THE GATE. One human approves and merges. This click IS the deploy — everything after it is automatic."],
-      ["e_deploy_provisioner","First merge only: deploy sees no solhann-app topic, hands off to the provisioner, and deploys NOTHING on that pass. (The push that CREATES main is skipped entirely — that guard exists because of a real incident.)"],
-      ["e_provisioner_repo","sol-apps/‹slug› now exists: protected, bot-writable, with an EMPTY prod environment. No topic, no instance, nothing on the server — an abandoned draft leaves one empty GitHub repo and no prod resources."],
-      ["e_provisioner_prov","The provisioner first asks the repo whether main really requires an approving review with enforce_admins, then provisions the jail over the write-only SSH lane. Prod generates its own superuser password."],
-      ["e_provisioner_env","A fresh per-app deploy key is installed: public half jailed on prod, private half into the prod ENVIRONMENT, where no branch run can reach it."],
-      ["e_merge_deploy","The provisioner sets the solhann-app topic LAST, then re-dispatches deploy — which now takes the normal path through the shared reusable pipeline."],
-      ["e_wf_static","The public site rsyncs through the rrsync jail into /var/www/apps/‹slug›."],
-      ["e_wf_hooks","Server-side code and migrations rsync through the app's own write-only lane."],
-      ["e_visit","Live. Visitors reach the app at ‹slug›.solhann.net through Caddy."],
+      ["e_rev_box","The reviewer tries the running app at preview.greenlit.page."],
+      ["e_rev_gate","THE GATE. One human approves and merges. This click IS the deploy: everything after it is automatic."],
+      ["e_hook","The merge reaches deployd, which trusts nothing it is told: it re-reads the merge, the approval, the archive and the identity files from Forgejo itself."],
+      ["e_deployd_prov","First merge only: deployd provisions the app over its own forced-command key. Prod generates its own superuser password."],
+      ["e_prov_oidc","provision-app registers the app as an OIDC client of Keycloak and writes the secret into the app's env on prod."],
+      ["e_deployd_mark","deployd has gl-provisiond mark the repo: the website, then the solhann-app topic, last."],
+      ["e_deployd_www","The public site rsyncs through the write-only jail."],
+      ["e_deployd_pb","Server-side code and migrations rsync through the app's own lane."],
+      ["e_shelf","deployd nudges the wizard, so the app is on the shelf as soon as it is up."],
+      ["e_visit","Live. Visitors reach the app at ‹slug›.greenlit.page through Caddy."],
     ]},
   change: {
-    title:"CHANGE AN EXISTING APP — same gate",
-    intro:"Editing goes through the identical pipeline as creating, verified live with <code>hello</code>. The entry point is the app's overlay on the shelf → <code>build.html?change=‹slug›</code>.",
+    title:"CHANGE AN EXISTING APP · same gate",
+    intro:"Editing goes through the identical pipeline as creating. The entry point is the app's overlay on the shelf, which opens <code>build.html?change=‹slug›</code>. You cannot merge your own pull request on a gated app, so a change always comes from the bot.",
     steps:[
-      ["e_build_start","A builder requests a change from the app's shelf overlay; greenlight refuses if the app repo is missing, has no spec.json, or already has an open agent PR."],
-      ["e_gl_agent","The agent session starts against the EXISTING repo; spec.json updates travel in the same PR as the code."],
-      ["e_agent_repo","The agent pushes a branch and opens the PR as the bot."],
-      ["e_repo_previewer","The PR dispatches the previewer…"],
-      ["e_previewer_box","…which brings the changed app up on the preview box."],
+      ["e_build_start","A builder requests a change from the app's shelf overlay."],
+      ["e_gl_agent","The agent session starts against the EXISTING repo; spec.json updates travel in the same pull request as the code."],
+      ["e_agent_repo","The agent opens its pull request by AGit push, as the bot."],
+      ["e_agent_eval","The evaluator tries the changed app with fresh eyes."],
+      ["e_deployd_preview","deployd brings the changed app up on the dev box."],
       ["e_rev_box","The reviewer uses the changed app before deciding."],
-      ["e_rev_gate","THE GATE, again — the same one. Approving the change merges it, and merging it puts it live."],
-      ["e_merge_deploy","Merge fires deploy.yml directly. The app already carries its topic and its key, so there is no provisioning hop — it deploys straight away."],
-      ["e_wf_static","Public site updates through the jail."],
-      ["e_wf_hooks","Server-side code updates through the app's own lane."],
+      ["e_rev_gate","THE GATE, again, the same one. Approving the change merges it, and merging it puts it live."],
+      ["e_hook","deployd re-verifies the merge. The app already has a host, so there is no provisioning hop."],
+      ["e_deployd_www","Public site updates through the jail."],
+      ["e_deployd_pb","Server-side code updates through the app's own lane."],
     ]},
-  legacy: {
-    title:"OWNER LANE — apps only the owner can write to",
-    intro:"How everything shipped before the pipeline, and how apps only the owner can write to still ship. No review gate, by design — the owner, by hand, on their own machine. Apps the agent can reach, this page included, go through the gate instead.",
+  access: {
+    title:"ACCESS · who may open an app",
+    intro:"One login for the platform, and per-app access as a grant. The identity provider refuses a code to anyone without one, so an ungranted person never reaches the app.",
     steps:[
-      ["e_legacy_push","The owner edits locally and pushes straight to sol-apps main. create-app scaffolds new repos into this lane (it provisions the jail first, for data apps)."],
-      ["e_merge_deploy","The push triggers the same shared deploy as pipeline apps — from here the paths are identical."],
-      ["e_wf_static","Public site through the rrsync jail."],
-      ["e_wf_hooks","Server-side lane, if it's a data app."],
+      ["e_rev_grant","An admin grants a person access to an app, optionally as its admin, in id-admin."],
+      ["e_grants","id-admin mirrors the grant into the Keycloak realm."],
+      ["e_visit","The visitor opens the app."],
+      ["e_caddy_kc","The app sends them to id.greenlit.page to sign in, once for every app."],
+      ["e_app_oidc","Keycloak issues a code only if they hold a grant for this app. The app's role is set from the claim on every login."],
     ]},
   schema: {
-    title:"SCHEMA CHANGE — migrations only",
-    intro:"Data-shape changes take a slower road because real data is at stake. Nothing edits live schema — not the dashboard, not the API. Prod replays a recording.",
+    title:"SCHEMA CHANGE · migrations only",
+    intro:"Data-shape changes take a slower road because real data is at stake. Nothing edits live schema, not the dashboard and not the API. Prod replays a recording.",
     steps:[
-      ["e_schema","Schema is edited on a throwaway local PocketBase (pb-dev); the dashboard writes migration files, which get committed and pushed — through the gate for pipeline apps."],
-      ["e_merge_deploy","Deploy fires like any code change."],
-      ["e_wf_hooks","Migrations travel the write-only server-side lane, alongside hooks, with --checksum so unchanged files don't trigger restarts out of order."],
-      ["e_migrate","On the box: stop → snapshot to /var/backups → apply one at a time → quarantine failures → health-check. A bad migration steps aside; the app keeps running on the schema that worked."],
+      ["e_agent_repo","The agent changes schema on a local PocketBase in its sandbox; the generated migration files go in the pull request with the code."],
+      ["e_rev_gate","Through the gate like any code change."],
+      ["e_hook","deployd verifies the merge."],
+      ["e_deployd_pb","Migrations travel the write-only server-side lane, alongside hooks."],
+      ["e_migrate","On the box: stop, snapshot, apply one at a time, quarantine failures, health-check. A bad migration steps aside; the app keeps running on the schema that worked."],
+    ]},
+  platform: {
+    title:"PLATFORM · how the wizard and id-admin ship",
+    intro:"The platform's own repos stay on GitHub and still ship through the GitHub pipeline. This is the path this page itself takes.",
+    steps:[
+      ["e_owner_push","The owner pushes the wizard or the platform to main; id-admin and this page need a reviewed pull request."],
+      ["e_gh_deploy","Main fires deploy.yml, which calls the shared workflow."],
+      ["e_gh_www","The public site rsyncs through the jail."],
+      ["e_gh_pb","Hooks and migrations go through the app's own lane, with a key only a main run can read."],
     ]},
 };
 
 const overview = () => `
-<h2>The greenlight pipeline</h2>
-<div class="sub">how an idea becomes a live app — with one human gate</div>
+<h2>The Greenlight pipeline</h2>
+<div class="sub">how an idea becomes a live app, with one human gate</div>
 <div class="bd">
-<p>This map is the whole system: ${laptopHidden?"two machines":"three machines"}, one GitHub org, and the lines between them. <b>Every line is labelled with the credential that authorises it</b> and coloured by how dangerous that credential is — hover any of them.</p>
-<p>The shape is a loop: <span class="mark">greenlight itself is an app on the prod box it deploys to</span>. A builder talks to it, an agent builds on a branch, a human approves — and that merge IS the deploy, landing straight back on the box. There is no promotion step and no second copy of anything.</p>
-<p>Until 2026-08-26 there were two orgs and a promoter mirroring between them, and the org boundary was what kept the agent away from prod credentials. What replaced it lives in the repos themselves: protected main, and a <code>prod</code> environment a branch run cannot enter.</p>
-<p>Four invariants hold everything up:</p>
+<p>This map is the whole system: ${laptopHidden?"two machines":"three machines"}, two forges, and the lines between them. <b>Every line is labelled with the credential that authorises it</b> and coloured by how dangerous that credential is: hover any of them.</p>
+<p>Greenlight's apps live on <b>Forgejo</b> at git.greenlit.page, on the prod box itself, because the platform has to be able to stand on a customer's own hardware. The platform's own repos stay on GitHub.</p>
+<p>The shape is a loop: <span class="mark">the wizard is an app on the prod box it deploys to</span>. A builder talks to it, an agent opens a pull request, an evaluator tries it, a human approves, and that merge IS the deploy.</p>
+<p>Forgejo cannot hold the gate alone: an instance admin can merge past a required review and any job can forge a status check. So there is <b>no CI runner and no secret in Forgejo at all</b>, and <span class="mark">deployd re-verifies every merge itself</span> before anything reaches prod.</p>
+<p>Six invariants hold it up:</p>
 <ul>
-<li><b>Nothing the agent can reach holds a prod credential.</b> Prod secrets live in a <code>prod</code> environment whose deployment branch policy admits <code>main</code> only, so a branch run is refused entry before its first step. The only credentials a public workflow may name are two start-only dispatch tokens.</li>
-<li><b>Merging is deploying.</b> There is no promotion step and no second copy of anything. On every app the agent can reach, <code>enforce_admins</code> refuses a direct push AND the admin merge override, so the review gate is the only route onto main. The owner lane, apps only the owner can write to, is the deliberate exception.</li>
-<li><b>The PR review is the only gate — merging IS deploying.</b> Everything before it is untrusted; everything after it is automatic.</li>
-<li><b>Prod's superuser passwords never leave prod.</b> Every SSH lane in is write-only; none can read secrets back.</li>
+<li><b>Merging is deploying, and the review is the only gate.</b> Held twice: branch protection on the forge, and deployd on the merged commit.</li>
+<li><b>The bot can open a pull request and nothing else.</b> No repo permission; it opens pull requests by AGit push.</li>
+<li><b>The org-owner credential exists in one place:</b> gl-provisiond, on prod. Never in the wizard.</li>
+<li><b>Nothing that can write to prod is reachable from an app repo.</b> Forgejo stores no secret; deployd's keys live on prod.</li>
+<li><b>Repo at draft, prod resources at the first reviewed merge.</b> The <code>solhann-app</code> topic means provisioning finished.</li>
+<li><b>The SSH lanes stay write-only.</b> Nothing prod generates is ever read back.</li>
 </ul>
 ${laptopHidden
-  ? `<p>One path reaches prod in this view: a <b>reviewed merge</b>, behind the gate. The owner's laptop is hidden, and with it the lanes only a person at that keyboard can use \u2014 the <b>owner lane</b> push and the <b>sudo lane</b>. They still exist; they are simply not drawn.</p>`
-  : `<p>Three paths reach prod, from most to least governed: a <b>reviewed merge</b> (the gate, and the only automated one), the owner's <b>direct push</b> to apps only he can write to (the owner lane), and the owner's <b>sudo lane</b> (interactive, password-gated). Every app the agent can reach still needs the reviewed merge.</p>`}
-<p class="sub" style="margin-top:14px">▶ trace a flow from the top bar, or click anything on the map.</p>
+  ? `<p>One path reaches a Greenlight app in this view: a <b>reviewed merge</b>, through deployd. The owner's laptop is hidden, and with it the lanes only a person at that keyboard can use: the <b>platform push</b> to GitHub and the <b>sudo lane</b>. They still exist; they are simply not drawn.</p>`
+  : `<p>Three paths reach prod, from most to least governed: a <b>reviewed merge</b> through deployd (the only one for a Greenlight app), the owner's <b>platform push</b> to GitHub for the wizard and the platform, and the owner's <b>sudo lane</b> (interactive, password-gated).</p>`}
+<p class="sub" style="margin-top:14px">&#x25B6; trace a flow from the top bar, or click anything on the map.</p>
 </div>`;
 
 /* ===================== geometry ===================== */
@@ -1116,9 +1200,9 @@ function setLaptop(hidden){
   });
 
   const mach = document.getElementById("cMachines");
-  if(mach) mach.textContent = hidden ? "2 — preview · prod" : "3 — laptop · preview · prod";
+  if(mach) mach.textContent = hidden ? "2 — dev box · prod" : "3 — laptop · dev box · prod";
   const paths = document.getElementById("cPaths");
-  if(paths) paths.textContent = hidden ? "1 shown — the reviewed merge" : "2 — all named below";
+  if(paths) paths.textContent = hidden ? "1 shown — the reviewed merge" : "3 — all named below";
 
   // Never leave the panel describing something that is no longer on screen.
   if(hidden && trace.on && FLOWS[trace.flow].steps.some(st=>LAPTOP_EDGES.has(st[0]))) stopTrace();
