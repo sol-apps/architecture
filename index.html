@@ -400,7 +400,7 @@ const NODES = [
     risk:"Nothing prod generates is here: superuser passwords, OIDC client secrets, Keycloak's and gl-provisiond's secrets all stay on prod, and a push keeps them and refuses them as input." },
   { id:"ssh-lanes", zone:"laptop", u:-12.0, v:27.6, w:1.8, d:1.5, h:1.5, label:"SSH LANES", badge:"⇶",
     what:"Lanes to prod, most-jailed first: <code>pb-provision</code> (forced command) and <code>ssh prod</code> (interactive shell as sol).",
-    how:"Root login is disabled, but root ACCESS is not: <code>ssh -t prod 'sudo …'</code> works with a password only the owner can type. Forgejo's server side (<code>flip-app.sh</code>, <code>remove-repo.sh</code>, the installers) is run this way.",
+    how:"Root login is disabled, but root ACCESS is not: <code>ssh -t prod 'sudo …'</code> works with a password only the owner can type. Forgejo's server side (<code>remove-repo.sh</code>, the installers) is run this way.",
     risk:"Write-only throughout: no lane can read a prod-generated secret back. Every jailed lane passes <code>-F /dev/null</code>, because <code>IdentitiesOnly</code> once let ssh fall through to an unrestricted key. Residual: any shell as <code>sol</code> can use the provisioning sudo rule, so the key's passphrase does not gate it." },
 ];
 
