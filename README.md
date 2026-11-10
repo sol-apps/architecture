@@ -24,7 +24,7 @@ Built for reasoning about the system, not just admiring it:
 - The one human gate — approving the pull request — is marked on the map,
   because merging IS deploying, and deployd re-verifies that approval on the
   merged commit before anything reaches prod.
-- **Hide the laptop** (button, top right) drops the owner's own machine — the
+- **Hide the laptop** (button, top right) drops Sol's own machine — the
   platform CLI, the pb-dev workbench, the secret store, and the lanes into prod
   that only a person at that keyboard can use. The header counts and the
   overview change with it, and the flow that starts there is disabled rather
