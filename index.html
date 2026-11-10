@@ -214,7 +214,7 @@ text{ font-family:"IBM Plex Mono",ui-monospace,monospace; fill:var(--ink); user-
     <button class="btn" data-flow="access">▶ access</button>
     <button class="btn" data-flow="schema">▶ schema</button>
     <button class="btn" data-flow="platform">▶ platform</button>
-    <button class="btn" id="laptopBtn" title="Hide the owner's laptop: the local control plane, the pb-secret store, and the direct lanes that only a person at that keyboard can use.">hide laptop</button>
+    <button class="btn" id="laptopBtn" title="Hide Sol's laptop: the local control plane, the pb-secret store, and the direct lanes that only a person at that keyboard can use.">hide laptop</button>
     <button class="btn" id="resetBtn">reset</button>
   </div>
 </header>
@@ -278,7 +278,7 @@ const NODES = [
     risk:"A malicious builder can burn agent-session money and produce a hostile draft, but every output lands in a pull request behind the review gate, and drafts are previewed on a box with nothing on it. A builder cannot reach prod." },
   { id:"reviewer", zone:"people", u:-15.4, v:5.2, w:1.4, d:1.4, h:2.2, kind:"actor", label:"REVIEWER", badge:"☑",
     what:"<span class='markr'>The only gate in the system.</span> Reads the pull request and the evaluator's report, tries the running preview, and approves on Forgejo. Approving is not a step before a deploy: merging IS deploying. Nobody gets a second look between the merge and production.",
-    how:"Branch protection on every app repo: push to main disabled for everyone, one approval, approvals and merging restricted to the owner, <code>apply_to_admins</code>, stale approvals dismissed. deployd then re-checks that approval on the merged commit itself before anything ships. The same person also grants access in id-admin.",
+    how:"Branch protection on every app repo: push to main disabled for everyone, one approval, approvals and merging restricted to Sol, <code>apply_to_admins</code>, stale approvals dismissed. deployd then re-checks that approval on the merged commit itself before anything ships. The same person also grants access in id-admin.",
     risk:"On this instance the reviewer is also the Forgejo instance admin, who can edit protection. He still cannot ship unreviewed work, because deployd refuses a merge with no qualifying approval by someone other than the author. A replicated platform needs the instance admin and the reviewers to be different people." },
   { id:"visitor", zone:"people", u:-15.4, v:10.6, w:1.2, d:1.2, h:1.2, kind:"actor", label:"VISITOR", badge:"V",
     what:"Anyone using a finished app at <code>&lt;slug&gt;.greenlit.page</code>.",
@@ -302,7 +302,7 @@ const NODES = [
     risk:"Nothing in it ever runs on a server: there is no runner, and deployd and provision-app read it only as data. An abandoned draft leaves exactly this, one empty repo, and nothing else on prod." },
   { id:"protection", zone:"forge", u:4.4, v:9.2, w:2.1, d:1.6, h:1.4, label:"BRANCH PROTECTION", badge:"⌂",
     what:"The forge's half of the gate. Applied by gl-provisiond to every app it creates and to every app moved from GitHub.",
-    how:"Push to main disabled for everyone, one approval, approvals and merging restricted to the owner, <code>apply_to_admins</code>, stale approvals dismissed, blocked on a rejected review and on an outdated branch, workflow paths protected, tags owner-only. <code>sudo gl-provisiond check &lt;slug&gt;</code> reports drift.",
+    how:"Push to main disabled for everyone, one approval, approvals and merging restricted to Sol, <code>apply_to_admins</code>, stale approvals dismissed, blocked on a rejected review and on an outdated branch, workflow paths protected, tags owner-only. <code>sudo gl-provisiond check &lt;slug&gt;</code> reports drift.",
     risk:"Necessary, not sufficient: Forgejo lets an instance admin merge past a required review, and any job could forge a status check. So no deploy relies on protection alone; deployd re-verifies the approval on the merged commit." },
   { id:"app-template", zone:"forge", u:10.8, v:1.4, w:1.7, d:1.4, h:1.2, label:"APP-TEMPLATE", badge:"T",
     what:"What every app repo is generated from, including the three identity files: <code>pb-auth.js</code>, <code>pb_hooks/identity.pb.js</code> and the identity migration.",
@@ -373,23 +373,23 @@ const NODES = [
   { id:"provision-app", zone:"prod", u:-3.8, v:24.8, w:2.1, d:1.7, h:1.7, label:"PROVISION-APP", badge:"⚙",
     what:"Creates or repairs an app's prod resources: Unix user, systemd unit, Caddy block, superuser password, and the app's OIDC client. Idempotent, safe to re-run.",
     how:"Root-owned, reached only through forced commands: the laptop's key forces <code>--ssh</code>; deployd's key forces <code>--ssh-provision-only</code>, which also refuses <code>--push-env</code>. It re-derives everything itself, reading the app from Forgejo, and records the host once in <code>/etc/greenlight/hosts</code>.",
-    risk:"Since 2026-10-14 it refuses, in every mode, an app served off <code>GREENLIGHT_DOMAIN</code> or already taken by the owner's own apps, so the two halves of the box cannot reach each other's apps." },
+    risk:"Since 2026-10-14 it refuses, in every mode, an app served off <code>GREENLIGHT_DOMAIN</code> or already taken by Sol's own apps, so the two halves of the box cannot reach each other's apps." },
 
   /* ---- GitHub ---- */
   { id:"platform-repos", zone:"github", u:-2.4, v:33.0, w:2.2, d:1.7, h:1.8, label:"PLATFORM REPOS", badge:"P",
-    what:"The platform's own source, on GitHub by the owner's decision of 2026-09-29: <code>platform</code>, <code>greenlight</code>, <code>id-admin</code>, <code>provisioner</code>, <code>workflows</code>, <code>previewer</code>, and this page.",
-    how:"<code>id-admin</code> and this page are review-gated with <code>enforce_admins</code>. <code>platform</code> and <code>greenlight</code> are private and unprotected: the owner pushes to main.",
-    risk:"Anything holding the owner's GitHub login, every session on the laptop included, can deploy the wizard with no review. Accepted for this instance; it does not reach a Greenlight app's server side." },
+    what:"The platform's own source, on GitHub by Sol's decision of 2026-09-29: <code>platform</code>, <code>greenlight</code>, <code>id-admin</code>, <code>provisioner</code>, <code>workflows</code>, <code>previewer</code>, and this page.",
+    how:"<code>id-admin</code> is review-gated with <code>enforce_admins</code>. <code>platform</code>, <code>greenlight</code> and this page take Sol's merges without a second approver.",
+    risk:"Anything holding Sol's GitHub login, every session on the laptop included, can deploy the wizard with no review. Accepted for this instance; it does not reach a Greenlight app's server side." },
   { id:"github-pipeline", zone:"github", u:-7.2, v:32.8, w:2.0, d:1.6, h:1.6, label:"GITHUB PIPELINE", badge:"⚙",
     what:"The GitHub-era pipeline, kept for what has not moved: <code>workflows</code>' reusable deploy, the <code>prod</code> environment, and the provisioner and previewer for test fixtures such as <code>deploy-test</code>.",
     how:"A push or merge to main runs <code>deploy.yml</code>, which may enter the main-only <code>prod</code> environment for <code>PB_HOOKS_SSH_KEY</code> and rsyncs over the same jailed lanes as deployd.",
-    risk:"The org secrets <code>SERVER_SSH_KEY</code> and friends are visible to every public repo in the org; their forced command on prod, <code>owner-lane</code>, is what contains them. It no longer deploys the owner's own apps, which run <code>sol-apps/create</code>'s <code>simple.yml</code>." },
+    risk:"The org secrets <code>SERVER_SSH_KEY</code> and friends are visible to every public repo in the org; their forced command on prod, <code>owner-lane</code>, is what contains them. It no longer deploys Sol's own apps, which run <code>sol-apps/create</code>'s <code>simple.yml</code>." },
 
   /* ---- laptop ---- */
   { id:"platform-cli", zone:"laptop", u:-15.4, v:21.4, w:1.9, d:1.5, h:1.6, label:"PLATFORM CLI", badge:"$",
     what:"The control plane: <code>pb-provision</code>, <code>pb-backups</code>, <code>greenlight-backfill</code>, <code>projects-sync</code>, <code>pb-schema</code> (inspection only).",
     how:"Bash scripts in the private <code>platform</code> repo. <code>app-lane.sh</code> is the one definition of which apps are gated; <code>projects-sync check</code> fails if any is not.",
-    risk:"The owner's own apps and their tooling left Greenlight on 2026-10-12 and live in <code>sol-apps/create</code>. What stays here is the rule that tells the two apart." },
+    risk:"Sol's own apps and their tooling left Greenlight on 2026-10-12 and live in <code>sol-apps/create</code>. What stays here is the rule that tells the two apart." },
   { id:"pb-dev", zone:"laptop", u:-11.9, v:22.4, w:1.7, d:1.4, h:1.3, label:"PB-DEV", badge:"⌂",
     what:"A throwaway local PocketBase for the platform's own apps. Its dashboard writes <code>pb_migrations/</code> files, which are committed like any other code.",
     how:"<code>platform/bin/pb-dev</code> from the app checkout, by path, with <code>GREENLIGHT_IDENTITY_MODE=local</code>. The build agent does the same inside its sandbox for Greenlight's apps.",
@@ -400,7 +400,7 @@ const NODES = [
     risk:"Nothing prod generates is here: superuser passwords, OIDC client secrets, Keycloak's and gl-provisiond's secrets all stay on prod, and a push keeps them and refuses them as input." },
   { id:"ssh-lanes", zone:"laptop", u:-12.0, v:27.6, w:1.8, d:1.5, h:1.5, label:"SSH LANES", badge:"⇶",
     what:"Lanes to prod, most-jailed first: <code>pb-provision</code> (forced command) and <code>ssh prod</code> (interactive shell as sol).",
-    how:"Root login is disabled, but root ACCESS is not: <code>ssh -t prod 'sudo …'</code> works with a password only the owner can type. Forgejo's server side (<code>remove-repo.sh</code>, the installers) is run this way.",
+    how:"Root login is disabled, but root ACCESS is not: <code>ssh -t prod 'sudo …'</code> works with a password only Sol can type. Forgejo's server side (<code>remove-repo.sh</code>, the installers) is run this way.",
     risk:"Write-only throughout: no lane can read a prod-generated secret back. Every jailed lane passes <code>-F /dev/null</code>, because <code>IdentitiesOnly</code> once let ssh fall through to an unrestricted key. Residual: any shell as <code>sol</code> can use the provisioning sudo rule, so the key's passphrase does not gate it." },
 ];
 
@@ -488,7 +488,7 @@ const EDGES = [
   { id:"e_deployd_www", from:"deployd", to:"static-files", cls:"scoped",
     label:"rsync public site", carries:"static files",
     cred:"gl-deploy key forced to deployd-lane www, then www-deploy-jail",
-    note:"<code>deployd-lane</code> admits only a provisioned app recorded under <code>GREENLIGHT_DOMAIN</code>, so deployd cannot touch the owner's own apps." },
+    note:"<code>deployd-lane</code> admits only a provisioned app recorded under <code>GREENLIGHT_DOMAIN</code>, so deployd cannot touch Sol's own apps." },
   { id:"e_deployd_pb", from:"deployd", to:"pb-jails", cls:"scoped",
     label:"rsync hooks + migrations", carries:"pb_hooks/ + pb_migrations/",
     cred:"gl-deploy key forced to deployd-lane pb, then pb-deploy-jail ‹slug›",
@@ -541,11 +541,11 @@ const EDGES = [
   { id:"e_sudo", from:"ssh-lanes", to:"provision-app", cls:"human", aux:true,
     label:"ssh -t prod 'sudo …'", carries:"root-level maintenance",
     cred:"Interactive shell as sol + sudo password (root login itself disabled)",
-    note:"Bootstrap, the Forgejo installers, moving or removing an app, break-glass. Gated on a password only the owner can type." },
+    note:"Bootstrap, the Forgejo installers, moving or removing an app, break-glass. Gated on a password only Sol can type." },
   { id:"e_owner_push", from:"platform-cli", to:"platform-repos", cls:"human", aux:true,
     label:"push / pull request", carries:"platform source",
-    cred:"The owner's own GitHub account",
-    note:"<code>greenlight</code> and <code>platform</code> take a push to main. <code>id-admin</code> and this page need a reviewed pull request that someone other than the owner authored." },
+    cred:"Sol's own GitHub account",
+    note:"<code>greenlight</code> and <code>platform</code> take a push to main. <code>id-admin</code> and this page need a reviewed pull request that someone other than Sol authored." },
   { id:"e_gh_deploy", from:"platform-repos", to:"github-pipeline", cls:"none",
     label:"main → deploy.yml", carries:"the checkout",
     cred:"GitHub-internal (secrets: inherit at run time)",
@@ -553,11 +553,11 @@ const EDGES = [
   { id:"e_gh_www", from:"github-pipeline", to:"static-files", cls:"scoped",
     label:"rsync public site", carries:"static files",
     cred:"SERVER_SSH_KEY (the org key, or the wizard's own), forced to write-only rrsync",
-    note:"The same write-only jail deployd uses, entered by a different key. The org key's forced command, <code>owner-lane</code>, belongs to the owner's side of the box." },
+    note:"The same write-only jail deployd uses, entered by a different key. The org key's forced command, <code>owner-lane</code>, belongs to Sol's side of the box." },
   { id:"e_gh_pb", from:"github-pipeline", to:"pb-jails", cls:"scoped",
     label:"rsync hooks", carries:"pb_hooks/ + pb_migrations/",
     cred:"Per-app PB_HOOKS_SSH_KEY, forced to pb-deploy-jail ‹slug›",
-    note:"On id-admin it lives in the main-only <code>prod</code> environment, which a branch run cannot enter. On the private wizard repo, which only the owner can write to, it is a repo secret." },
+    note:"On id-admin it lives in the main-only <code>prod</code> environment, which a branch run cannot enter. On the private wizard repo, which only Sol can write to, it is a repo secret." },
   { id:"e_schema", from:"pb-dev", to:"platform-repos", cls:"human", aux:true,
     label:"commit pb_migrations", carries:"recorded schema changes",
     cred:"The same push or pull request as any other change",
@@ -628,7 +628,7 @@ const FLOWS = {
     title:"PLATFORM · how the wizard and id-admin ship",
     intro:"The platform's own repos stay on GitHub and still ship through the GitHub pipeline. This is the path this page itself takes.",
     steps:[
-      ["e_owner_push","The owner pushes the wizard or the platform to main; id-admin and this page need a reviewed pull request."],
+      ["e_owner_push","Sol pushes the wizard or the platform to main; id-admin and this page need a reviewed pull request."],
       ["e_gh_deploy","Main fires deploy.yml, which calls the shared workflow."],
       ["e_gh_www","The public site rsyncs through the jail."],
       ["e_gh_pb","Hooks and migrations go through the app's own lane, with a key only a main run can read."],
@@ -653,8 +653,8 @@ const overview = () => `
 <li><b>The SSH lanes stay write-only.</b> Nothing prod generates is ever read back.</li>
 </ul>
 ${laptopHidden
-  ? `<p>One path reaches a Greenlight app in this view: a <b>reviewed merge</b>, through deployd. The owner's laptop is hidden, and with it the lanes only a person at that keyboard can use: the <b>platform push</b> to GitHub and the <b>sudo lane</b>. They still exist; they are simply not drawn.</p>`
-  : `<p>Three paths reach prod, from most to least governed: a <b>reviewed merge</b> through deployd (the only one for a Greenlight app), the owner's <b>platform push</b> to GitHub for the wizard and the platform, and the owner's <b>sudo lane</b> (interactive, password-gated).</p>`}
+  ? `<p>One path reaches a Greenlight app in this view: a <b>reviewed merge</b>, through deployd. Sol's laptop is hidden, and with it the lanes only a person at that keyboard can use: the <b>platform push</b> to GitHub and the <b>sudo lane</b>. They still exist; they are simply not drawn.</p>`
+  : `<p>Three paths reach prod, from most to least governed: a <b>reviewed merge</b> through deployd (the only one for a Greenlight app), Sol's <b>platform push</b> to GitHub for the wizard and the platform, and Sol's <b>sudo lane</b> (interactive, password-gated).</p>`}
 <p class="sub" style="margin-top:14px">&#x25B6; trace a flow from the top bar, or click anything on the map.</p>
 </div>`;
 
@@ -1166,7 +1166,7 @@ function pulse(eid){
 }
 
 /* ===================== hide the laptop =====================
-   The laptop is the owner's own machine: the platform CLI, the local
+   The laptop is Sol's own machine: the platform CLI, the local
    pb-dev workbench, the pb-secret store, and the two lanes into prod that
    only a person at that keyboard can use. It is the half of the picture
    that is about ONE person rather than about the pipeline, so it can be
